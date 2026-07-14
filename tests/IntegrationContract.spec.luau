@@ -76,10 +76,36 @@ local function collect(node: Marker)
 	end
 end
 
-for _, sceneName in { "Maze", "Tower", "Field", "Epilogue" } do
+for _, sceneName in { "Lobby", "Maze", "Tower", "Field", "Epilogue" } do
 	local text = fs.readFile(`src/workspace/Scenes/{sceneName}.model.json`)
 	collect(serde.decode("json", text) :: Marker)
 end
+
+local function approximately(actual: number, expected: number): boolean
+	return math.abs(actual - expected) < 0.001
+end
+
+local cframeCount = 0
+for _, marker in markers do
+	local properties = marker.properties or {}
+	local cframe = properties.CFrame
+	if type(cframe) == "table" then
+		assert(#cframe == 12, `{marker.name or "instance"} CFrame must have 12 components`)
+		-- Rojo's implicit order is position first, followed by a 3x3 rotation
+		-- matrix. Orthonormal rows catch the former rotation-first serialization.
+		local r00, r01, r02 = cframe[4], cframe[5], cframe[6]
+		local r10, r11, r12 = cframe[7], cframe[8], cframe[9]
+		local r20, r21, r22 = cframe[10], cframe[11], cframe[12]
+		assert(approximately(r00 * r00 + r01 * r01 + r02 * r02, 1), "invalid CFrame row 1")
+		assert(approximately(r10 * r10 + r11 * r11 + r12 * r12, 1), "invalid CFrame row 2")
+		assert(approximately(r20 * r20 + r21 * r21 + r22 * r22, 1), "invalid CFrame row 3")
+		assert(approximately(r00 * r10 + r01 * r11 + r02 * r12, 0), "CFrame rows 1/2")
+		assert(approximately(r00 * r20 + r01 * r21 + r02 * r22, 0), "CFrame rows 1/3")
+		assert(approximately(r10 * r20 + r11 * r21 + r12 * r22, 0), "CFrame rows 2/3")
+		cframeCount += 1
+	end
+end
+assert(cframeCount >= 70, "expected authored scene CFrames")
 
 local function hasTag(marker: Marker, wanted: string): boolean
 	for _, tag in marker.tags or {} do
