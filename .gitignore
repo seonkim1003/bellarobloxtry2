@@ -1,0 +1,9 @@
+work/
+outputs/
+artifacts/
+sourcemap.json
+*.rbxl
+*.rbxlx
+.DS_Store
+Thumbs.db
+

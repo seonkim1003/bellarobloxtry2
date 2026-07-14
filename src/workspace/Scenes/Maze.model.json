@@ -1,0 +1,136 @@
+{
+  "className": "Model",
+  "children": [
+    {
+      "name": "MazeSpawn",
+      "className": "Part",
+      "tags": ["SceneSpawn"],
+      "attributes": {
+        "MarkerId": "MazeStart",
+        "SceneId": "Maze"
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2.0, 2.0, 2.0],
+        "CFrame": [
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0,
+          50, 1, 0
+        ],
+        "Color": [0.35, 0.24, 0.55],
+        "Material": "Neon",
+        "Transparency": 0.35
+      }
+    },
+    {
+      "name": "BellaSpawn",
+      "className": "Part",
+      "tags": ["NPCSpawn"],
+      "attributes": {
+        "MarkerId": "BellaSpawn",
+        "NPCType": "Bella",
+        "SceneId": "Maze"
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2.0, 2.0, 2.0],
+        "CFrame": [
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0,
+          58, 1, 8
+        ],
+        "Color": [0.55, 0.2, 0.2],
+        "Material": "Neon",
+        "Transparency": 0.35
+      }
+    },
+    {
+      "name": "RamboGuideSpawn",
+      "className": "Part",
+      "tags": ["NPCSpawn"],
+      "attributes": {
+        "MarkerId": "RamboGuideSpawn",
+        "NPCType": "RamboGuide",
+        "SceneId": "Maze"
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2.0, 2.0, 2.0],
+        "CFrame": [
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0,
+          54, 1, 4
+        ],
+        "Color": [0.4, 0.3, 0.2],
+        "Material": "Neon",
+        "Transparency": 0.35
+      }
+    },
+    {
+      "name": "MazeExit",
+      "className": "Part",
+      "tags": ["MazeExit"],
+      "attributes": {
+        "MarkerId": "MazeExit",
+        "SceneId": "Maze"
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2.0, 2.0, 2.0],
+        "CFrame": [
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0,
+          90, 1, 20
+        ],
+        "Color": [0.9, 0.5, 0.2],
+        "Material": "Neon",
+        "Transparency": 0.35
+      }
+    },
+    {
+      "name": "AmbushMarker",
+      "className": "Part",
+      "tags": ["CinematicMarker"],
+      "attributes": {
+        "MarkerId": "KidnapStart",
+        "SceneId": "Maze",
+        "SequenceIndex": 1
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2.0, 2.0, 2.0],
+        "CFrame": [
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0,
+          88, 2, 20
+        ],
+        "Color": [0.8, 0.3, 0.5],
+        "Material": "Neon",
+        "Transparency": 0.35
+      }
+    },
+    {
+      "name": "MazeFloor",
+      "className": "Part",
+      "attributes": { "SceneId": "Maze", "MarkerId": "MazeFloor" },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": true,
+        "Size": [60.0, 1.0, 60.0],
+        "CFrame": [1,0,0, 0,1,0, 0,0,1, 70,0,10],
+        "Color": [0.18, 0.14, 0.22],
+        "Material": "Slate"
+      }
+    }
+  ]
+}
