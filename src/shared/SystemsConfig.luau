@@ -63,6 +63,7 @@ return table.freeze({
 		Bella = table.freeze({
 			WalkSpeed = 17,
 			CatchDistance = 5,
+			ContactDamage = 25,
 			DetectionDistance = 500,
 			DisengageDistance = 600,
 		}),

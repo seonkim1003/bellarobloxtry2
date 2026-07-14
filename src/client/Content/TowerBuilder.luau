@@ -14,11 +14,23 @@ local Tagging = require(script.Parent:WaitForChild("Tagging"))
 
 local TowerBuilder = {}
 
+local function configureStep(part: BasePart, index: number)
+	local materials = ContentConfig.sounds.obbyMaterials
+	local material = materials[((index - 1) % #materials) + 1]
+	part:SetAttribute("StepMaterial", material.name)
+	part:SetAttribute("SoundId", material.soundId)
+	part:SetAttribute("PlaybackSpeed", material.playbackSpeed)
+end
+
 local function preserveAuthoritativeSteps(tower: Model): boolean
 	local found = 0
 	for _, child in tower:GetChildren() do
 		if child:IsA("BasePart") and child.Name:match("^ASMRStep_") then
 			found += 1
+			local index = child:GetAttribute("SequenceIndex")
+			if typeof(index) == "number" then
+				configureStep(child, index)
+			end
 			child.CanCollide = true
 			child.CanTouch = true
 		end
@@ -84,6 +96,7 @@ local function placeStepPart(
 		SoundId = soundId,
 		SequenceIndex = index,
 	})
+	configureStep(step, index)
 end
 
 function TowerBuilder.rebuildFlights()

@@ -17,6 +17,10 @@ Reviewed exports and Roblox asset IDs belong in `art/export`.
 | Gigi | `9747993459` | Model | [Pet The Dog](https://create.roblox.com/store/asset/9747993459/Pet-The-Dog) | Stand-in template → Gigi | Replace with creator-owned when ready |
 | Letter fragments / HUD icon | `17475591057` | Model | [Clickable Note](https://create.roblox.com/store/asset/17475591057/Clickable-Note) | Cloned to fragment markers and rendered in the HUD | Creator-selected |
 | Title-side character | `102058945923521` | Model | [Fat Bart](https://create.roblox.com/store/asset/102058945923521/Fat-Bart) | Sanitized and rendered beside the title in a ViewportFrame | Creator-selected |
+| Maze exit door | `132074708194112` | Model | [Backrooms Exit Door](https://create.roblox.com/store/asset/132074708194112/Backrooms-Exit-Door-Lost-Backrooms-Entity-Carpet) | Full functionality preserved over the authoritative exit sensor | Creator-selected |
+| Obby stair: Jelly | `9827430032` | Model | [Jelly](https://create.roblox.com/store/asset/9827430032/Jelly) | Full model repeated every third stair | Creator-selected |
+| Obby stair: Butter | `135865294874666` | Model | [Butter ASMR](https://create.roblox.com/store/asset/135865294874666/Butter-ASMR-Virus-removed) | Full functionality preserved; repeated every third stair | Creator-selected |
+| Obby stair: Pop-it | `7234923605` | Model | [Pop-it](https://create.roblox.com/store/asset/7234923605/popit-functional) | Full scripts, sounds, and interactions preserved | Creator-selected |
 
 ## Creator media still awaiting upload
 

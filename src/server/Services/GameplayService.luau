@@ -129,6 +129,14 @@ function GameplayService._onCatch(self: any, player: Player, npcType: string): b
 			total = Config.Story.FragmentCount,
 			caught = true,
 		})
+	else
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health > 0 then
+			humanoid:TakeDamage(Config.NPC.Bella.ContactDamage)
+			self:_fireObjective(player, `Escape Bella - health {math.ceil(humanoid.Health)}`)
+			return true
+		end
 	end
 	self.checkpoints:Respawn(player)
 	self:_fireObjective(
@@ -557,7 +565,8 @@ function GameplayService.Start(self: any)
 				return
 			end
 			if
-				confirmed and self.validator:ConsumeOnce(`Revive:{self.storyService:GetRevision()}`)
+				confirmed
+				and self.validator:ConsumeOnce(`Revive:{self.storyService:GetRevision()}`)
 			then
 				self.storyService:Transition(Contract.States.Corruption, "ReviveConfirmed")
 			else

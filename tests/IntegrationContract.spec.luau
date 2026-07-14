@@ -171,6 +171,11 @@ assert(
 	"Revive choice must stay hidden until its cinematic completes"
 )
 assert(
+	string.find(presenterSource, "function StoryPresenter:_finishCinematic", 1, true)
+		and string.find(presenterSource, "self._deps.firstPerson.apply()", 1, true),
+	"Completed cinematics must return the player to first person"
+)
+assert(
 	string.find(presenterSource, "d.sprint:enable()", 1, true)
 		and string.find(presenterSource, "d.sprint:disable()", 1, true)
 		and string.find(presenterSource, "d.asmr:start()", 1, true)
@@ -190,6 +195,10 @@ assert(
 	"Placeholder admin credentials must fail closed"
 )
 local gameplaySource = fs.readFile("src/server/Services/GameplayService.luau")
+assert(
+	string.find(gameplaySource, "humanoid:TakeDamage(Config.NPC.Bella.ContactDamage)", 1, true),
+	"Bella must deal server-authoritative contact damage during the maze chase"
+)
 assert(
 	string.find(gameplaySource, "detected = true", 1, true)
 		and string.find(gameplaySource, "caught = true", 1, true),
@@ -226,6 +235,11 @@ assert(
 	"Bella must have dedicated chase fallback behavior"
 )
 local assetMountSource = fs.readFile("src/shared/ContentAssetMount.luau")
+assert(
+	string.find(assetMountSource, "preserveExecutable", 1, true)
+		and string.find(assetMountSource, "loadAssetModel(assetId, key, true)", 1, true),
+	"Creator-selected obby assets must preserve their original functionality"
+)
 assert(
 	string.find(assetMountSource, 'descendant:IsA("LuaSourceContainer")', 1, true),
 	"Marketplace assets must remove executable descendants"

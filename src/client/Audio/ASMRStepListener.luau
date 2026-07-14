@@ -86,7 +86,11 @@ function ASMRStepListener:_onTouched(part: BasePart, hit: BasePart)
 	local sequenceIndex = part:GetAttribute("SequenceIndex")
 	local stepIndex = if typeof(sequenceIndex) == "number" then sequenceIndex else 0
 	local soundId = resolveSoundId(part)
-	ContentAudio.safePlay(soundId, volumeForStep(math.max(stepIndex, 1)), part)
+	local sound = ContentAudio.safePlay(soundId, volumeForStep(math.max(stepIndex, 1)), part)
+	local playbackSpeed = part:GetAttribute("PlaybackSpeed")
+	if sound and typeof(playbackSpeed) == "number" then
+		sound.PlaybackSpeed = math.clamp(playbackSpeed, 0.5, 2)
+	end
 
 	if stepIndex > self._highestStep then
 		self._highestStep = stepIndex

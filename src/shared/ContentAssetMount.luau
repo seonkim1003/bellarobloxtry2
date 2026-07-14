@@ -146,7 +146,11 @@ local function prepareSceneModel(
 	model:PivotTo(model:GetPivot() + (target - bottomCenter))
 end
 
-function ContentAssetMount.loadAssetModel(assetId: number, label: string): Model?
+function ContentAssetMount.loadAssetModel(
+	assetId: number,
+	label: string,
+	preserveExecutable: boolean?
+): Model?
 	local ok, containerOrErr = pcall(function()
 		return InsertService:LoadAsset(assetId)
 	end)
@@ -164,13 +168,101 @@ function ContentAssetMount.loadAssetModel(assetId: number, label: string): Model
 	end
 
 	model.Name = label
-	removeExecutableDescendants(model)
+	if preserveExecutable ~= true then
+		removeExecutableDescendants(model)
+	end
 	if ensurePrimary(model) == nil then
 		warn(`[ContentAssets] No BasePart inside asset {label} ({assetId})`)
 		model:Destroy()
 		return nil
 	end
 	return model
+end
+
+local function storeFunctionalTemplate(templates: Folder, key: string, assetId: number): Model?
+	local existing = templates:FindFirstChild(key)
+	if existing then
+		existing:Destroy()
+	end
+	-- Creator-selected obby props intentionally keep their original scripts,
+	-- sounds, click detectors, and other interactions.
+	local loaded = ContentAssetMount.loadAssetModel(assetId, key, true)
+	if loaded == nil then
+		return nil
+	end
+	loaded.Parent = templates
+	return loaded
+end
+
+local function fitFunctionalClone(
+	template: Model,
+	marker: BasePart,
+	cloneName: string,
+	maxSize: Vector3
+): Model
+	local clone = template:Clone()
+	clone.Name = cloneName
+	local _, size = clone:GetBoundingBox()
+	local scale = math.min(
+		maxSize.X / math.max(size.X, 0.01),
+		maxSize.Y / math.max(size.Y, 0.01),
+		maxSize.Z / math.max(size.Z, 0.01)
+	)
+	clone:ScaleTo(clone:GetScale() * scale)
+	local bounds, fittedSize = clone:GetBoundingBox()
+	local desiredBounds = marker.CFrame * CFrame.new(0, (fittedSize.Y - marker.Size.Y) / 2, 0)
+	local transform = desiredBounds * bounds:Inverse()
+	clone:PivotTo(transform * clone:GetPivot())
+	return clone
+end
+
+local function placeFunctionalProps(templates: Folder): boolean
+	local props = ContentConfig.assets.marketplace.props
+	local door = storeFunctionalTemplate(templates, "MazeExitDoor", props.mazeExitDoor)
+	local jelly = storeFunctionalTemplate(templates, "ObbyJelly", props.jelly)
+	local butter = storeFunctionalTemplate(templates, "ObbyButter", props.butter)
+	local popIt = storeFunctionalTemplate(templates, "ObbyPopIt", props.popIt)
+	if door == nil or jelly == nil or butter == nil or popIt == nil then
+		return false
+	end
+
+	local folder = ensureFolder(Workspace, "FunctionalMarketplaceProps")
+	folder:ClearAllChildren()
+	for _, tagged in CollectionService:GetTagged("MazeExit") do
+		if tagged:IsA("BasePart") then
+			local visual = fitFunctionalClone(door, tagged, "MazeExitDoor", Vector3.new(10, 9, 3))
+			-- The exit sensor is intentionally oversized for reliable touch/proximity.
+			-- Raise the fitted door so its threshold sits on the maze floor.
+			visual:PivotTo(visual:GetPivot() + Vector3.new(0, 2.5, 0))
+			visual.Parent = folder
+			tagged.Transparency = 1
+		end
+	end
+
+	local obbyTemplates = { jelly, butter, popIt }
+	local materialNames = { "Jelly", "Butter", "PopIt" }
+	for _, tagged in CollectionService:GetTagged("ASMRStep") do
+		if tagged:IsA("BasePart") then
+			local sequenceIndex = tagged:GetAttribute("SequenceIndex")
+			if typeof(sequenceIndex) == "number" then
+				local materialIndex = ((sequenceIndex - 1) % #obbyTemplates) + 1
+				local material = ContentConfig.sounds.obbyMaterials[materialIndex]
+				tagged:SetAttribute("StepMaterial", materialNames[materialIndex])
+				tagged:SetAttribute("SoundId", material.soundId)
+				tagged:SetAttribute("PlaybackSpeed", material.playbackSpeed)
+				local visual = fitFunctionalClone(
+					obbyTemplates[materialIndex],
+					tagged,
+					`{materialNames[materialIndex]}Step_{sequenceIndex}`,
+					tagged.Size
+				)
+				visual.Parent = folder
+				tagged.Transparency = 1
+				tagged.CanCollide = true
+			end
+		end
+	end
+	return true
 end
 
 local function hideAuthoredMarker(instance: Instance)
@@ -552,6 +644,16 @@ function ContentAssetMount.mountAll()
 		marketplace.props.fatBart,
 		storeCharacterTemplate(templates, "TitleFatBart", marketplace.props.fatBart)
 	)
+	local functionalPropsMounted = placeFunctionalProps(templates)
+	setMountStatus(
+		templates,
+		"mazeExitDoor",
+		marketplace.props.mazeExitDoor,
+		functionalPropsMounted
+	)
+	setMountStatus(templates, "jelly", marketplace.props.jelly, functionalPropsMounted)
+	setMountStatus(templates, "butter", marketplace.props.butter, functionalPropsMounted)
+	setMountStatus(templates, "popIt", marketplace.props.popIt, functionalPropsMounted)
 	for _, step in CollectionService:GetTagged("ASMRStep") do
 		if step:IsA("BasePart") then
 			step.CanCollide = true

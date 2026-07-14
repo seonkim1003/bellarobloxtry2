@@ -87,8 +87,29 @@ local function cinematicStep(
 end
 
 local asmrStepSounds: { string } = {}
-for _ = 1, 28 do
-	table.insert(asmrStepSounds, PLACEHOLDER_SOUND)
+local obbyMaterials = {
+	{
+		name = "Jelly",
+		assetId = 9827430032,
+		soundId = "rbxasset://sounds/action_footsteps_plastic.mp3",
+		playbackSpeed = 0.72,
+	},
+	{
+		name = "Butter",
+		assetId = 135865294874666,
+		soundId = "rbxasset://sounds/action_footsteps_wood.mp3",
+		playbackSpeed = 0.62,
+	},
+	{
+		name = "PopIt",
+		assetId = 7234923605,
+		soundId = "rbxasset://sounds/electronicpingshort.wav",
+		playbackSpeed = 1.35,
+	},
+}
+for index = 1, 28 do
+	local material = obbyMaterials[((index - 1) % #obbyMaterials) + 1]
+	table.insert(asmrStepSounds, material.soundId)
 end
 
 local placeholderObjects: { PlaceholderObject } = {
@@ -379,6 +400,10 @@ local ContentConfig = {
 			props = {
 				letterFragments = 17475591057, -- Clickable Note
 				fatBart = 102058945923521, -- title-screen character decoration
+				mazeExitDoor = 132074708194112,
+				jelly = 9827430032,
+				butter = 135865294874666,
+				popIt = 7234923605,
 			},
 			sources = {
 				lobby = "https://create.roblox.com/store/asset/9271965383/Lobby-Island",
@@ -392,6 +417,10 @@ local ContentConfig = {
 				gigi = "https://create.roblox.com/store/asset/9747993459/Pet-The-Dog",
 				letterFragments = "https://create.roblox.com/store/asset/17475591057/Clickable-Note",
 				fatBart = "https://create.roblox.com/store/asset/102058945923521/Fat-Bart",
+				mazeExitDoor = "https://create.roblox.com/store/asset/132074708194112/Backrooms-Exit-Door-Lost-Backrooms-Entity-Carpet",
+				jelly = "https://create.roblox.com/store/asset/9827430032/Jelly",
+				butter = "https://create.roblox.com/store/asset/135865294874666/Butter-ASMR-Virus-removed",
+				popIt = "https://create.roblox.com/store/asset/7234923605/popit-functional",
 			},
 		},
 		models = {
@@ -406,6 +435,10 @@ local ContentConfig = {
 			field = "rbxassetid://13088916306",
 			letterFragments = "rbxassetid://17475591057",
 			fatBart = "rbxassetid://102058945923521",
+			mazeExitDoor = "rbxassetid://132074708194112",
+			jelly = "rbxassetid://9827430032",
+			butter = "rbxassetid://135865294874666",
+			popIt = "rbxassetid://7234923605",
 		},
 		-- Animation asset IDs (NOT sounds). Remain placeholders until creator uploads.
 		animations = {
@@ -465,6 +498,7 @@ local ContentConfig = {
 		uiClick = { soundId = PLACEHOLDER_SOUND, volume = 0.5, looped = false },
 		dogFightImpact = { soundId = PLACEHOLDER_SOUND, volume = 0.55, looped = false },
 		asmrSteps = asmrStepSounds,
+		obbyMaterials = obbyMaterials,
 	},
 
 	lighting = {

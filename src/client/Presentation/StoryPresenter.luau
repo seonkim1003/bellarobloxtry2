@@ -73,6 +73,16 @@ function StoryPresenter:_finishCue(payload: any)
 	end
 end
 
+function StoryPresenter:_finishCinematic(callback: (() -> ())?)
+	-- CinematicPlayer restores the Roblox camera before invoking its callback.
+	-- Re-apply the gameplay presentation lock here so every cutscene hands control
+	-- back in first person, including sequences that began by releasing the lock.
+	self._deps.firstPerson.apply()
+	if callback then
+		callback()
+	end
+end
+
 function StoryPresenter:_schedule(_payload: any, delaySeconds: number, callback: () -> ())
 	local generation = self._cueGeneration
 	task.delay(delaySeconds, function()
@@ -149,7 +159,9 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 			d.cinematics:playKidnapCutscene(d.kidnapStage, function()
 				self:_restorePlayerMovement()
 				d.kidnapStage:clear()
-				self:_finishCue(payload)
+				self:_finishCinematic(function()
+					self:_finishCue(payload)
+				end)
 			end)
 		end)
 		if not ok then
@@ -157,7 +169,9 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 			d.cinematics:reset()
 			self:_restorePlayerMovement()
 			d.kidnapStage:clear()
-			self:_finishCue(payload)
+			self:_finishCinematic(function()
+				self:_finishCue(payload)
+			end)
 		end
 	elseif state == "GuideEncounter" then
 		d.lighting.applyScene("Tower")
@@ -165,7 +179,9 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.robber.ensureAtSpawn()
 		d.gui.setObjective("Listen to Robert Pattinson")
 		d.cinematics:playSequence("guide", function()
-			self:_finishCue(payload)
+			self:_finishCinematic(function()
+				self:_finishCue(payload)
+			end)
 		end)
 	elseif state == "TowerClimb" then
 		d.lighting.applyScene("Tower")
@@ -183,13 +199,17 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.asmr:stop()
 		d.gui.showRevive(false)
 		d.cinematics:playSequence("revive", function()
-			-- Do not expose the choice while another sequence owns the camera.
-			d.gui.showRevive(true)
+			self:_finishCinematic(function()
+				-- Do not expose the choice while another sequence owns the camera.
+				d.gui.showRevive(true)
+			end)
 		end)
 	elseif state == "Corruption" then
 		d.gui.showRevive(false)
 		d.cinematics:playSequence("corruption", function()
-			self:_finishCue(payload)
+			self:_finishCinematic(function()
+				self:_finishCue(payload)
+			end)
 		end)
 	elseif state == "FieldHunt" then
 		d.lighting.applyScene("Field")
@@ -205,13 +225,17 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	elseif state == "LetterTheft" then
 		d.gui.setObjective("The pieces are taken...")
 		d.cinematics:playSequence("letterTheft", function()
-			self:_finishCue(payload)
+			self:_finishCinematic(function()
+				self:_finishCue(payload)
+			end)
 		end)
 	elseif state == "DogFight" then
 		d.silhouettes.mount()
 		d.audio.playDogFightImpact()
 		d.cinematics:playDogFightSilhouette(function()
-			self:_finishCue(payload)
+			self:_finishCinematic(function()
+				self:_finishCue(payload)
+			end)
 		end)
 	elseif state == "Epilogue" then
 		d.silhouettes.clear()
@@ -220,10 +244,12 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.gui.setObjective("One hour later")
 		d.gui.setSubtitle("Bella", ContentConfig.dialogue.epilogue[1].text)
 		d.cinematics:playSequence("epilogue", function()
-			d.gui.setSubtitle("Robert Pattinson", ContentConfig.dialogue.epilogue[2].text)
-			self:_schedule(payload, 4, function()
-				d.gui.clearSubtitle()
-				self:_finishCue(payload)
+			self:_finishCinematic(function()
+				d.gui.setSubtitle("Robert Pattinson", ContentConfig.dialogue.epilogue[2].text)
+				self:_schedule(payload, 4, function()
+					d.gui.clearSubtitle()
+					self:_finishCue(payload)
+				end)
 			end)
 		end)
 	elseif state == "LetterReveal" then
@@ -231,7 +257,9 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.letterPanel.show(true)
 		d.gui.setSubtitle("Gigi", ContentConfig.dialogue.letterReveal[1].text)
 		d.cinematics:playSequence("letterReveal", function()
-			self:_finishCue(payload)
+			self:_finishCinematic(function()
+				self:_finishCue(payload)
+			end)
 		end)
 	elseif state == "Credits" then
 		d.letterPanel.hide()
