@@ -28,9 +28,10 @@ local CinematicPlayer =
 	require(clientRoot:WaitForChild("Cinematics"):WaitForChild("CinematicPlayer"))
 local RobberPresentation =
 	require(clientRoot:WaitForChild("NPCs"):WaitForChild("RobberPresentation"))
-local SilhouetteStage = require(clientRoot:WaitForChild("NPCs"):WaitForChild("SilhouetteStage"))
 local KidnapStage = require(clientRoot:WaitForChild("NPCs"):WaitForChild("KidnapStage"))
 local EpilogueProps = require(clientRoot:WaitForChild("NPCs"):WaitForChild("EpilogueProps"))
+local DogFightPresenter =
+	require(clientRoot:WaitForChild("Presentation"):WaitForChild("DogFightPresenter"))
 local FragmentFeedback =
 	require(clientRoot:WaitForChild("Feedback"):WaitForChild("FragmentFeedback"))
 local DetectionFeedback =
@@ -56,6 +57,8 @@ local asmr = ASMRStepListener.new(ContentConfig.controls.asmrDebounceSeconds)
 local cinematics = CinematicPlayer.new()
 cinematics:bindSubtitles(gui.setSubtitle, gui.clearSubtitle)
 local kidnapStage = KidnapStage.new()
+local dogFight = DogFightPresenter.new(cinematics, ContentAudio)
+dogFight:bindSubtitles(gui.setSubtitle, gui.clearSubtitle)
 
 local presenter = StoryPresenter.new({
 	gui = gui,
@@ -66,7 +69,7 @@ local presenter = StoryPresenter.new({
 	sprint = sprint,
 	asmr = asmr,
 	robber = RobberPresentation,
-	silhouettes = SilhouetteStage,
+	dogFight = dogFight,
 	kidnapStage = kidnapStage,
 	epilogueProps = EpilogueProps,
 	fragmentFeedback = FragmentFeedback,
@@ -158,6 +161,12 @@ end)
 remotes:on("AdminDiagnostics", function(payload: any)
 	local text = if typeof(payload) == "table" then payload.message else tostring(payload)
 	gui.showAdminDiagnostics(true, text)
+end)
+
+-- FightBeat sync is accepted by DogFightPresenter; coordinator may also route it.
+-- Wire it here because client remotes are Codex-owned.
+remotes:on("FightBeat", function(payload: any)
+	dogFight:applyFightBeat(payload)
 end)
 
 -- Establish lobby presentation before remote events can transition into a stage.

@@ -293,6 +293,66 @@ local placeholderObjects: { PlaceholderObject } = {
 		attributes = { SceneId = "Field", MarkerId = "TheftSteal", SequenceIndex = 1 },
 	},
 	{
+		sceneId = "Field",
+		name = "TheftGigiMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "TheftGigi", SequenceIndex = 2 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightSilhouetteMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightSilhouette", SequenceIndex = 0 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightEstablishMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightEstablish", SequenceIndex = 1 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightRamboStalkMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightRamboStalk", SequenceIndex = 2 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightAttackTelegraphMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightAttackTelegraph", SequenceIndex = 3 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightFirstClashMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightFirstClash", SequenceIndex = 4 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightRamboAdvantageMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightRamboAdvantage", SequenceIndex = 5 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightGigiCounterMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightGigiCounter", SequenceIndex = 6 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightRamboBackDownMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightRamboBackDown", SequenceIndex = 7 },
+	},
+	{
+		sceneId = "Field",
+		name = "FightGigiVictoryMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Field", MarkerId = "FightGigiVictory", SequenceIndex = 8 },
+	},
+	{
 		sceneId = "Epilogue",
 		name = "EpilogueSpawn",
 		tag = "SceneSpawn",
@@ -673,7 +733,8 @@ local ContentConfig = {
 			cinematicStep("TheftGigi", 3.5, 0.2, 0.4, "theft_gigi"),
 		},
 		dogFight = {
-			cinematicStep("FightSilhouette", 5, 0.4, 0.4, nil),
+			-- Legacy single-step fallback; DogFightTimeline owns the eight beats.
+			cinematicStep("FightSilhouette", 5, 0.4, 0.4, "fight_1"),
 		},
 		epilogue = {
 			cinematicStep("EpilogueTable", 6, 0.5, 0.4, "epi_bella"),
