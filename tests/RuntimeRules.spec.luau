@@ -56,6 +56,23 @@ assert(
 	RuntimeRules.shouldRecoverCinematic("BellaChase", 7, 100, "BellaChase", 7, 140, 30) == false,
 	"non-cinematic states never recover through the cinematic watchdog"
 )
+
+assert(
+	RuntimeRules.isDogFightCompletionValid("DogFight", 12, 12, 4, 4) == true,
+	"matching server generation completes DogFight"
+)
+assert(
+	RuntimeRules.isDogFightCompletionValid("DogFight", 12, 11, 4, 4) == false,
+	"stale story revision cannot complete DogFight"
+)
+assert(
+	RuntimeRules.isDogFightCompletionValid("DogFight", 12, 12, 5, 4) == false,
+	"stale fight generation cannot complete DogFight"
+)
+assert(
+	RuntimeRules.isDogFightCompletionValid("Epilogue", 12, 12, 4, 4) == false,
+	"replaced state cannot complete DogFight"
+)
 assert(
 	RuntimeRules.shouldRecoverCinematic("RamboTaken", 7, 100, "RamboTaken", 7, 140, 0) == false,
 	"disabled recovery deadlines fail closed"

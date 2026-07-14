@@ -78,6 +78,19 @@ function RuntimeRules.shouldRecoverCinematic(
 		and now - stateEnteredAt >= recoverySeconds
 end
 
+function RuntimeRules.isDogFightCompletionValid(
+	currentState: string,
+	currentRevision: number,
+	completionRevision: number,
+	currentFightGeneration: number,
+	completionFightGeneration: number
+): boolean
+	return currentState == "DogFight"
+		and currentRevision == completionRevision
+		and currentFightGeneration == completionFightGeneration
+		and completionFightGeneration > 0
+end
+
 function RuntimeRules.shouldEmitDetection(
 	wasChasing: boolean,
 	isChasing: boolean,

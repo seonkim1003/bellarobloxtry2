@@ -22,6 +22,10 @@ function DogFightService.new(remotes: { [string]: RemoteEvent }): DogFightServic
 		storyRevision = 0,
 		active = false,
 		_generation = 0,
+		started = false,
+		completed = Instance.new("BindableEvent"),
+		completedFightGeneration = 0,
+		completedStoryRevision = 0,
 	}, DogFightService)
 end
 
@@ -43,10 +47,14 @@ function DogFightService._fireBeat(self: any, beatIndex: number, beatId: string,
 end
 
 function DogFightService.Begin(self: any, storyRevision: number)
+	if not self.started then
+		return
+	end
 	self:Cancel()
 	self._generation += 1
 	local token = self._generation
 	self.fightGeneration += 1
+	local fightGeneration = self.fightGeneration
 	self.storyRevision = storyRevision
 	self.active = true
 
@@ -60,8 +68,16 @@ function DogFightService.Begin(self: any, storyRevision: number)
 			local dwell = DogFightTimeline.durationForBeat(beat, reducedMotion)
 			task.wait(dwell)
 		end
-		if self._generation == token then
+		if
+			self._generation == token
+			and self.active
+			and self.fightGeneration == fightGeneration
+			and self.storyRevision == storyRevision
+		then
 			self.active = false
+			self.completedFightGeneration = fightGeneration
+			self.completedStoryRevision = storyRevision
+			self.completed:Fire(storyRevision, fightGeneration)
 		end
 	end)
 end
@@ -69,6 +85,15 @@ end
 function DogFightService.Cancel(self: any)
 	self._generation += 1
 	self.active = false
+	self.completedFightGeneration = 0
+	self.completedStoryRevision = 0
+end
+
+function DogFightService.Start(self: any)
+	if self.started then
+		return
+	end
+	self.started = true
 end
 
 function DogFightService.OnStoryStateChanged(self: any, state: string, storyRevision: number)
@@ -81,6 +106,28 @@ end
 
 function DogFightService.IsActive(self: any): boolean
 	return self.active == true
+end
+
+function DogFightService.GetFightGeneration(self: any): number
+	return self.fightGeneration
+end
+
+function DogFightService.IsCompletedGeneration(
+	self: any,
+	storyRevision: number,
+	fightGeneration: number
+): boolean
+	return self.started
+		and self.active == false
+		and self.completedStoryRevision == storyRevision
+		and self.completedFightGeneration == fightGeneration
+end
+
+function DogFightService.ObserveCompleted(
+	self: any,
+	callback: (number, number) -> ()
+): RBXScriptConnection
+	return self.completed.Event:Connect(callback)
 end
 
 return DogFightService

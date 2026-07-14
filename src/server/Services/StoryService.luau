@@ -58,7 +58,7 @@ function StoryService.CanTransition(self: StoryService, nextState: string): bool
 	return RuntimeRules.canTransition(self.state, nextState)
 end
 
-function StoryService.Transition(self: StoryService, nextState: string, reason: string?): boolean
+local function commitTransition(self: StoryService, nextState: string, reason: string?): boolean
 	if not self:CanTransition(nextState) then
 		warn(`Rejected story transition {self.state} -> {nextState}`)
 		return false
@@ -70,6 +70,38 @@ function StoryService.Transition(self: StoryService, nextState: string, reason: 
 	self:_broadcast(Contract.Cues.StateChanged)
 	self.changed:Fire(nextState, previous, reason)
 	return true
+end
+
+function StoryService.Transition(self: StoryService, nextState: string, reason: string?): boolean
+	if self.state == Contract.States.DogFight and nextState == Contract.States.Epilogue then
+		warn("Rejected DogFight completion without a matching server generation")
+		return false
+	end
+	return commitTransition(self, nextState, reason)
+end
+
+function StoryService.CompleteDogFight(
+	self: StoryService,
+	completionRevision: number,
+	currentFightGeneration: number,
+	completionFightGeneration: number
+): boolean
+	if
+		not RuntimeRules.isDogFightCompletionValid(
+			self.state,
+			self.revision,
+			completionRevision,
+			currentFightGeneration,
+			completionFightGeneration
+		)
+	then
+		return false
+	end
+	return commitTransition(
+		self,
+		Contract.States.Epilogue,
+		`DogFightGeneration:{completionFightGeneration}`
+	)
 end
 
 function StoryService.StartFor(self: StoryService, player: Player, startState: string?): boolean

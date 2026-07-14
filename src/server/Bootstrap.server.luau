@@ -19,6 +19,7 @@ local GameplayService = require(Services:WaitForChild("GameplayService"))
 local AdminService = require(Services:WaitForChild("AdminService"))
 local WorldMarkerService = require(Services:WaitForChild("WorldMarkerService"))
 local NPC = script.Parent:WaitForChild("NPC")
+local DogFightService = require(NPC:WaitForChild("DogFightService"))
 local FriendlyRamboService = require(NPC:WaitForChild("FriendlyRamboService"))
 local HostileNpcService = require(NPC:WaitForChild("HostileNpcService"))
 
@@ -48,6 +49,7 @@ local validator = Validation.new()
 local roles = RoleService.new(remotes)
 local story = StoryService.new(remotes, roles)
 local checkpoints = CheckpointService.new()
+local dogFight = DogFightService.new(remotes)
 local gameplay: any = nil
 local friendlyRambo = FriendlyRamboService.new(roles)
 local bella = HostileNpcService.new(roles, "Bella", Config.NPC.Bella, function(player, npcType)
@@ -85,6 +87,26 @@ gameplay = GameplayService.new(
 local admin = AdminService.new(remotes, validator, roles, story)
 
 checkpoints:Start()
+
+story:ObserveChanged(function(state)
+	dogFight:OnStoryStateChanged(state, story:GetRevision())
+end)
+
+dogFight:ObserveCompleted(function(storyRevision, fightGeneration)
+	if
+		RuntimeRules.isDogFightCompletionValid(
+			story:GetState(),
+			story:GetRevision(),
+			storyRevision,
+			dogFight:GetFightGeneration(),
+			fightGeneration
+		)
+		and dogFight:IsCompletedGeneration(storyRevision, fightGeneration)
+		and validator:ConsumeOnce(`DogFight:{storyRevision}:{fightGeneration}`)
+	then
+		story:CompleteDogFight(storyRevision, dogFight:GetFightGeneration(), fightGeneration)
+	end
+end)
 
 roles:ObserveRoleChanged(function(player, role, previousRole)
 	if role == Contract.Roles.Protagonist then
@@ -141,6 +163,9 @@ remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player, 
 end)
 
 Players.PlayerRemoving:Connect(function(player)
+	if player == roles:GetProtagonist() then
+		dogFight:Cancel()
+	end
 	validator:ForgetPlayer(player)
 end)
 
@@ -156,6 +181,7 @@ friendlyRambo:Start()
 bella:Start()
 evilRambo:Start()
 gameplay:Start()
+dogFight:Start()
 admin:Start()
 roles:Start()
 
