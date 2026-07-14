@@ -63,6 +63,22 @@ function RuntimeRules.isCinematicAckValid(
 		and now - stateEnteredAt >= math.max(minimumSeconds, 0)
 end
 
+function RuntimeRules.shouldRecoverCinematic(
+	currentState: string,
+	currentRevision: number,
+	stateEnteredAt: number,
+	expectedState: string,
+	expectedRevision: number,
+	now: number,
+	recoverySeconds: number
+): boolean
+	return recoverySeconds > 0
+		and currentState == expectedState
+		and currentRevision == expectedRevision
+		and cinematicNextStates[currentState] ~= nil
+		and now - stateEnteredAt >= recoverySeconds
+end
+
 function RuntimeRules.shouldEmitDetection(
 	wasChasing: boolean,
 	isChasing: boolean,

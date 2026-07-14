@@ -21,10 +21,21 @@ type KidnapStageInternal = {
 	_hiddenNpcs: { BasePart },
 	_grabbed: boolean,
 	_generation: number,
+	_ready: boolean,
+	_currentMarkerId: string?,
 }
 
 local FOLDER_NAME = "ContentKidnapCutscene"
 local HIDDEN_ATTR = "_KidnapCutsceneHidden"
+
+local function findMazeExit(): BasePart?
+	for _, tagged in CollectionService:GetTagged("MazeExit") do
+		if tagged:IsA("BasePart") then
+			return tagged
+		end
+	end
+	return nil
+end
 
 local function findMarker(markerId: string): BasePart?
 	for _, tagged in CollectionService:GetTagged("CinematicMarker") do
@@ -33,13 +44,21 @@ local function findMarker(markerId: string): BasePart?
 		end
 	end
 	if markerId == "KidnapStart" then
-		for _, tagged in CollectionService:GetTagged("MazeExit") do
-			if tagged:IsA("BasePart") then
-				return tagged
-			end
-		end
+		return findMazeExit()
 	end
 	return nil
+end
+
+local function waitForTemplates(timeoutSeconds: number): boolean
+	local deadline = os.clock() + timeoutSeconds
+	while os.clock() < deadline do
+		local folder = ReplicatedStorage:FindFirstChild("ContentModels")
+		if folder and folder:IsA("Folder") and folder:GetAttribute("Ready") == true then
+			return true
+		end
+		task.wait(0.1)
+	end
+	return ReplicatedStorage:FindFirstChild("ContentModels") ~= nil
 end
 
 local function ensurePrimary(model: Model): BasePart?
@@ -54,7 +73,13 @@ local function ensurePrimary(model: Model): BasePart?
 end
 
 local function groundPivot(model: Model, target: CFrame)
-	local bounds, size = model:GetBoundingBox()
+	local ok, bounds, size = pcall(function()
+		return model:GetBoundingBox()
+	end)
+	if not ok then
+		model:PivotTo(target)
+		return
+	end
 	local bottom = Vector3.new(bounds.Position.X, bounds.Position.Y - size.Y / 2, bounds.Position.Z)
 	local ground = Vector3.new(target.Position.X, target.Position.Y, target.Position.Z)
 	model:PivotTo(model:GetPivot() + (ground - bottom))
@@ -99,7 +124,15 @@ local function cloneTemplate(templateName: string, actorName: string): Model
 	return createFallback(actorName, Vector3.new(3, 2.5, 4), Color3.fromRGB(145, 105, 70))
 end
 
-local function tweenPivot(model: Model, target: CFrame, duration: number)
+local function tweenPivot(
+	model: Model,
+	target: CFrame,
+	duration: number,
+	shouldContinue: (() -> boolean)?
+)
+	if not model:IsDescendantOf(Workspace) or (shouldContinue and not shouldContinue()) then
+		return
+	end
 	local start = model:GetPivot()
 	local alpha = Instance.new("NumberValue")
 	alpha.Value = 0
@@ -109,13 +142,19 @@ local function tweenPivot(model: Model, target: CFrame, duration: number)
 		{ Value = 1 }
 	)
 	local connection = alpha.Changed:Connect(function()
+		if not model:IsDescendantOf(Workspace) or (shouldContinue and not shouldContinue()) then
+			tween:Cancel()
+			return
+		end
 		model:PivotTo(start:Lerp(target, alpha.Value))
 	end)
 	tween:Play()
 	tween.Completed:Wait()
 	connection:Disconnect()
 	alpha:Destroy()
-	model:PivotTo(target)
+	if model:IsDescendantOf(Workspace) and (shouldContinue == nil or shouldContinue()) then
+		model:PivotTo(target)
+	end
 end
 
 local function hideLiveNpcs(): { BasePart }
@@ -165,22 +204,29 @@ function KidnapStage.new(): KidnapStage
 		_hiddenNpcs = {},
 		_grabbed = false,
 		_generation = 0,
+		_ready = false,
+		_currentMarkerId = nil,
 	}, KidnapStage)
 end
 
-function KidnapStage.prepare(self: KidnapStage)
+function KidnapStage.isReady(self: KidnapStage): boolean
+	return self._ready
+end
+
+function KidnapStage.prepare(self: KidnapStage): boolean
 	self:clear()
 	self._generation += 1
 	self._grabbed = false
+	self._ready = false
 	self._hiddenNpcs = hideLiveNpcs()
+	waitForTemplates(8)
 
-	local exitPart = findMarker("KidnapStart")
+	local exitPart = findMazeExit() or findMarker("KidnapStart")
 	local holdPart = findMarker("KidnapHold") or exitPart
 	if exitPart == nil then
-		return
+		warn("[KidnapStage] Missing MazeExit / KidnapStart marker; cutscene cannot stage")
+		return false
 	end
-	local confirmedExit = exitPart :: BasePart
-	local confirmedHold = (holdPart or confirmedExit) :: BasePart
 
 	local folder = Instance.new("Folder")
 	folder.Name = FOLDER_NAME
@@ -192,9 +238,9 @@ function KidnapStage.prepare(self: KidnapStage)
 	ensurePrimary(rambo)
 	ensurePrimary(bella)
 
-	local ramboAtExit = confirmedExit.CFrame * CFrame.new(0, 0, 1.5)
-	local bellaWaiting = confirmedHold.CFrame
-		* CFrame.new(-2, 0, -2)
+	local ramboAtExit = exitPart.CFrame * CFrame.new(0, 0, 2)
+	local bellaWaiting = (holdPart or exitPart).CFrame
+		* CFrame.new(-3.5, 0, -4)
 		* CFrame.Angles(0, math.rad(25), 0)
 
 	groundPivot(rambo, ramboAtExit)
@@ -204,33 +250,41 @@ function KidnapStage.prepare(self: KidnapStage)
 	bella.Parent = folder
 	self._rambo = rambo
 	self._bella = bella
+	self._ready = true
+	return true
 end
 
-function KidnapStage.getFocusCFrame(self: KidnapStage, markerId: string): CFrame?
-	local exitPart = findMarker("KidnapStart")
+function KidnapStage.setCurrentMarker(self: KidnapStage, markerId: string)
+	self._currentMarkerId = markerId
+end
+
+function KidnapStage.getFocusCFrame(self: KidnapStage, markerId: string?): CFrame?
+	local phaseId = markerId or self._currentMarkerId or "KidnapStart"
+	local exitPart = findMazeExit() or findMarker("KidnapStart")
 	local holdPart = findMarker("KidnapHold")
 	local departPart = findMarker("KidnapDepart")
 
 	local focus = Vector3.zero
-	if markerId == "KidnapStart" and self._rambo then
+	if phaseId == "KidnapStart" and self._rambo then
 		focus = self._rambo:GetPivot().Position + Vector3.new(0, 2, 0)
-	elseif markerId == "KidnapApproach" then
+	elseif phaseId == "KidnapApproach" then
 		if self._bella and self._rambo then
 			focus = self._bella:GetPivot().Position:Lerp(self._rambo:GetPivot().Position, 0.45)
 				+ Vector3.new(0, 2.2, 0)
 		elseif holdPart then
 			focus = holdPart.Position + Vector3.new(0, 2, 0)
 		end
-	elseif markerId == "KidnapHold" then
+	elseif phaseId == "KidnapHold" then
 		if self._bella and self._rambo then
 			focus = self._bella:GetPivot().Position:Lerp(self._rambo:GetPivot().Position, 0.65)
 				+ Vector3.new(0, 2, 0)
 		elseif holdPart then
 			focus = holdPart.Position + Vector3.new(0, 2, 0)
 		end
-	elseif markerId == "KidnapDepart" then
-		if self._bella then
-			focus = self._bella:GetPivot().Position + Vector3.new(0, 2.5, 0)
+	elseif phaseId == "KidnapDepart" then
+		if self._bella and self._rambo then
+			focus = self._bella:GetPivot().Position:Lerp(self._rambo:GetPivot().Position, 0.5)
+				+ Vector3.new(0, 2.5, 0)
 		elseif departPart then
 			focus = departPart.Position + Vector3.new(0, 2, 0)
 		end
@@ -242,11 +296,12 @@ function KidnapStage.getFocusCFrame(self: KidnapStage, markerId: string): CFrame
 		return nil
 	end
 
-	local cameraOffset = Vector3.new(7, 4.5, -7)
+	local cameraOffset = Vector3.new(8, 5, -8)
 	return CFrame.lookAt(focus + cameraOffset, focus)
 end
 
 function KidnapStage.beginPhase(self: KidnapStage, markerId: string, durationSeconds: number)
+	self._currentMarkerId = markerId
 	local bella = self._bella
 	local rambo = self._rambo
 	if bella == nil or rambo == nil then
@@ -254,33 +309,41 @@ function KidnapStage.beginPhase(self: KidnapStage, markerId: string, durationSec
 	end
 
 	local generation = self._generation
+	local function stillCurrent(): boolean
+		return self._generation == generation
+	end
 	task.spawn(function()
+		local exitPart = findMazeExit() or findMarker("KidnapStart")
+		if exitPart == nil then
+			return
+		end
+
 		if markerId == "KidnapStart" then
+			local approachStart = exitPart.CFrame
+				* CFrame.new(-5, 0, -6)
+				* CFrame.Angles(0, math.rad(20), 0)
+			tweenPivot(bella, approachStart, durationSeconds * 0.35, stillCurrent)
 			return
 		end
 
 		if markerId == "KidnapApproach" then
-			local exitPart = findMarker("KidnapStart")
-			if exitPart == nil then
-				return
-			end
 			local target = exitPart.CFrame
 				* CFrame.new(-1.8, 0, -1.2)
 				* CFrame.Angles(0, math.rad(-15), 0)
-			tweenPivot(bella, target, durationSeconds * 0.92)
+			tweenPivot(bella, target, durationSeconds * 0.92, stillCurrent)
 			return
 		end
 
 		if markerId == "KidnapHold" and not self._grabbed then
 			self._grabbed = true
 			local grabPoint = bella:GetPivot() * CFrame.new(1.2, 0, 0.6)
-			tweenPivot(rambo, grabPoint, durationSeconds * 0.55)
+			tweenPivot(rambo, grabPoint, durationSeconds * 0.55, stillCurrent)
 			if self._generation ~= generation then
 				return
 			end
 			task.wait(durationSeconds * 0.1)
 			local lift = grabPoint * CFrame.new(0, 0.35, -0.2)
-			tweenPivot(rambo, lift, durationSeconds * 0.25)
+			tweenPivot(rambo, lift, durationSeconds * 0.25, stillCurrent)
 			return
 		end
 
@@ -297,9 +360,9 @@ function KidnapStage.beginPhase(self: KidnapStage, markerId: string, durationSec
 			local ramboTarget = bellaTarget * CFrame.new(1.1, 0.35, 0.5)
 			local moveDuration = durationSeconds * 0.9
 			task.spawn(function()
-				tweenPivot(bella, bellaTarget, moveDuration)
+				tweenPivot(bella, bellaTarget, moveDuration, stillCurrent)
 			end)
-			tweenPivot(rambo, ramboTarget, moveDuration)
+			tweenPivot(rambo, ramboTarget, moveDuration, stillCurrent)
 		end
 	end)
 end
@@ -307,6 +370,8 @@ end
 function KidnapStage.clear(self: KidnapStage)
 	self._generation += 1
 	self._grabbed = false
+	self._ready = false
+	self._currentMarkerId = nil
 	restoreLiveNpcs(self._hiddenNpcs)
 	self._hiddenNpcs = {}
 

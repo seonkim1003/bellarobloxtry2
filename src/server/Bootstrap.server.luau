@@ -120,6 +120,14 @@ Players.PlayerRemoving:Connect(function(player)
 	validator:ForgetPlayer(player)
 end)
 
+Players.PlayerAdded:Connect(function(player)
+	task.defer(function()
+		if story:GetState() ~= Contract.States.RoleLobby then
+			story:SendSnapshot(player)
+		end
+	end)
+end)
+
 friendlyRambo:Start()
 bella:Start()
 evilRambo:Start()

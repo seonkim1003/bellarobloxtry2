@@ -6,6 +6,8 @@
 local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChild("SharedAccess"))
 local ContentConfig = SharedAccess.requireContentConfig()
 
+local Players = game:GetService("Players")
+
 export type DirectorDeps = {
 	gui: any,
 	remotes: any,
@@ -34,6 +36,8 @@ export type StoryPresenter = typeof(setmetatable(
 		_deps: DirectorDeps,
 		_state: string?,
 		_cueGeneration: number,
+		_lockedHumanoid: Humanoid?,
+		_savedWalkSpeed: number?,
 	},
 	StoryPresenter
 ))
@@ -43,7 +47,19 @@ function StoryPresenter.new(deps: DirectorDeps): StoryPresenter
 		_deps = deps,
 		_state = nil,
 		_cueGeneration = 0,
+		_lockedHumanoid = nil,
+		_savedWalkSpeed = nil,
 	}, StoryPresenter)
+end
+
+function StoryPresenter:_restorePlayerMovement()
+	local humanoid = self._lockedHumanoid
+	local savedWalkSpeed = self._savedWalkSpeed
+	self._lockedHumanoid = nil
+	self._savedWalkSpeed = nil
+	if humanoid and humanoid.Parent and savedWalkSpeed ~= nil then
+		humanoid.WalkSpeed = savedWalkSpeed
+	end
 end
 
 function StoryPresenter:_finishCue(payload: any)
@@ -73,13 +89,14 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		return
 	end
 	self._cueGeneration = (self._cueGeneration :: number) + 1
+	self:_restorePlayerMovement()
 	self._state = state
 	local d = self._deps
 
 	if state == "RoleLobby" then
 		d.firstPerson.release()
-		d.sprint.enable()
-		d.asmr.stop()
+		d.sprint:enable()
+		d.asmr:stop()
 		d.fragmentPrompts.stop()
 		d.gui.showTitle(true)
 		d.gui.showCredits(false)
@@ -94,7 +111,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	elseif state == "MazeIntro" then
 		d.gui.showTitle(false)
 		d.firstPerson.apply()
-		d.sprint.enable()
+		d.sprint:enable()
 		d.lighting.applyScene("Maze")
 		d.audio.ambienceForScene("Maze")
 		d.gui.setObjective("Follow Rambo through the maze")
@@ -106,7 +123,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	elseif state == "BellaChase" then
 		d.gui.showTitle(false)
 		d.firstPerson.apply()
-		d.sprint.enable()
+		d.sprint:enable()
 		d.lighting.applyScene("Maze")
 		d.audio.ambienceForScene("Maze")
 		d.detection.showChase(true)
@@ -118,13 +135,30 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		self:_finishCue(payload)
 	elseif state == "RamboTaken" then
 		d.detection.reset()
-		d.sprint.disable()
+		d.sprint:disable()
 		d.firstPerson.release()
 		d.gui.setObjective("Rambo was taken...")
-		d.cinematics:playKidnapCutscene(d.kidnapStage, function()
+		local humanoid = Players.LocalPlayer.Character
+			and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			self._lockedHumanoid = humanoid
+			self._savedWalkSpeed = humanoid.WalkSpeed
+			humanoid.WalkSpeed = 0
+		end
+		local ok, err = pcall(function()
+			d.cinematics:playKidnapCutscene(d.kidnapStage, function()
+				self:_restorePlayerMovement()
+				d.kidnapStage:clear()
+				self:_finishCue(payload)
+			end)
+		end)
+		if not ok then
+			warn(`[StoryPresenter] Kidnap cutscene failed to start: {tostring(err)}`)
+			d.cinematics:reset()
+			self:_restorePlayerMovement()
 			d.kidnapStage:clear()
 			self:_finishCue(payload)
-		end)
+		end
 	elseif state == "GuideEncounter" then
 		d.lighting.applyScene("Tower")
 		d.audio.ambienceForScene("Tower")
@@ -137,8 +171,8 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.lighting.applyScene("Tower")
 		d.audio.ambienceForScene("Tower")
 		d.towerBuilder.rebuildFlights()
-		d.asmr.start()
-		d.sprint.enable()
+		d.asmr:start()
+		d.sprint:enable()
 		d.gui.setObjective("Climb the tower - every step sings")
 		d.gui.setSubtitle("Robert Pattinson", ContentConfig.dialogue.robberGuide[2].text)
 		self:_schedule(payload, 4, function()
@@ -146,7 +180,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		end)
 		self:_finishCue(payload)
 	elseif state == "RevivePrompt" then
-		d.asmr.stop()
+		d.asmr:stop()
 		d.gui.showRevive(false)
 		d.cinematics:playSequence("revive", function()
 			-- Do not expose the choice while another sequence owns the camera.
@@ -161,7 +195,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.lighting.applyScene("Field")
 		d.audio.ambienceForScene("Field")
 		d.fragmentPrompts.start()
-		d.sprint.enable()
+		d.sprint:enable()
 		d.gui.setObjective("Find three letter fragments - stay quiet")
 		d.gui.setSubtitle("System", ContentConfig.dialogue.fieldHunt[1].text)
 		self:_schedule(payload, ContentConfig.dialogue.fieldHunt[1].durationSeconds, function()
@@ -202,8 +236,8 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	elseif state == "Credits" then
 		d.letterPanel.hide()
 		d.gui.showCredits(true)
-		d.sprint.disable()
-		d.asmr.stop()
+		d.sprint:disable()
+		d.asmr:stop()
 		d.firstPerson.release()
 		self:_finishCue(payload)
 	else
@@ -248,9 +282,10 @@ end
 function StoryPresenter.resetForReplay(self: StoryPresenter)
 	self._cueGeneration = (self._cueGeneration :: number) + 1
 	local d = self._deps
+	self:_restorePlayerMovement()
 	d.cinematics:reset()
-	d.asmr.stop()
-	d.sprint.enable()
+	d.asmr:stop()
+	d.sprint:enable()
 	d.detection.reset()
 	d.letterPanel.reset()
 	d.silhouettes.clear()

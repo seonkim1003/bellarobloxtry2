@@ -12,6 +12,7 @@ return table.freeze({
 	}),
 	Validation = table.freeze({
 		DefaultInteractionDistance = 14,
+		MazeExitInteractionDistance = 22,
 		RemoteBurstLimit = 8,
 		RemoteWindowSeconds = 2,
 		CinematicBurstLimit = 2,
@@ -42,6 +43,18 @@ return table.freeze({
 			DogFight = 5.5,
 			Epilogue = 8,
 			LetterReveal = 6,
+		}),
+		-- Server-owned escape hatch for a client that crashes or disconnects while
+		-- presenting a cinematic. These comfortably exceed the authored duration.
+		CinematicRecoverySeconds = table.freeze({
+			MazeIntro = 5,
+			RamboTaken = 30,
+			GuideEncounter = 12,
+			Corruption = 10,
+			LetterTheft = 15,
+			DogFight = 15,
+			Epilogue = 18,
+			LetterReveal = 15,
 		}),
 	}),
 	NPC = table.freeze({

@@ -36,6 +36,38 @@ assert(
 	"reject mismatched cue"
 )
 
+assert(
+	RuntimeRules.shouldRecoverCinematic("RamboTaken", 7, 100, "RamboTaken", 7, 130, 30) == true,
+	"recover a cinematic exactly at its server deadline"
+)
+assert(
+	RuntimeRules.shouldRecoverCinematic("RamboTaken", 7, 100, "RamboTaken", 7, 129.99, 30) == false,
+	"do not recover a cinematic before its deadline"
+)
+assert(
+	RuntimeRules.shouldRecoverCinematic("GuideEncounter", 8, 100, "RamboTaken", 7, 140, 30) == false,
+	"an old watchdog cannot advance a newer state and revision"
+)
+assert(
+	RuntimeRules.shouldRecoverCinematic("RamboTaken", 8, 100, "RamboTaken", 7, 140, 30) == false,
+	"an old watchdog cannot advance a newer revision of the same state"
+)
+assert(
+	RuntimeRules.shouldRecoverCinematic("BellaChase", 7, 100, "BellaChase", 7, 140, 30) == false,
+	"non-cinematic states never recover through the cinematic watchdog"
+)
+assert(
+	RuntimeRules.shouldRecoverCinematic("RamboTaken", 7, 100, "RamboTaken", 7, 140, 0) == false,
+	"disabled recovery deadlines fail closed"
+)
+local acknowledgedNextState = RuntimeRules.cinematicNextState("RamboTaken")
+assert(acknowledgedNextState == "GuideEncounter", "valid ack chooses one canonical next state")
+assert(
+	RuntimeRules.isCinematicAckValid(acknowledgedNextState, 8, 130, "RamboTaken", 7, 131, 18)
+		== false,
+	"the same acknowledgement cannot advance twice after its first transition"
+)
+
 assert(RuntimeRules.shouldEmitDetection(false, true, 0, 10, 2) == true, "emit first detect")
 assert(
 	RuntimeRules.shouldEmitDetection(false, true, 9, 10, 2) == false,

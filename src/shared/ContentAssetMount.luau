@@ -21,6 +21,39 @@ local function removeExecutableDescendants(instance: Instance)
 	end
 end
 
+local function isUnsafeVisualRuntime(instance: Instance): boolean
+	return instance:IsA("Humanoid")
+		or instance:IsA("AnimationController")
+		or instance:IsA("Animator")
+		or instance:IsA("Sound")
+		or instance:IsA("ClickDetector")
+		or instance:IsA("DragDetector")
+		or instance:IsA("ProximityPrompt")
+		or instance:IsA("BodyMover")
+		or instance:IsA("AlignPosition")
+		or instance:IsA("AlignOrientation")
+		or instance:IsA("AngularVelocity")
+		or instance:IsA("LinearVelocity")
+		or instance:IsA("VectorForce")
+end
+
+local function sanitizeCharacterVisual(model: Model)
+	-- Marketplace characters are presentation only. Their controllers, sounds,
+	-- interactions, and movers must never compete with the authoritative NPC actor.
+	removeExecutableDescendants(model)
+	for _, descendant in model:GetDescendants() do
+		if isUnsafeVisualRuntime(descendant) then
+			descendant:Destroy()
+		elseif descendant:IsA("BasePart") then
+			descendant.Anchored = false
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.Massless = true
+		end
+	end
+end
+
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing and existing:IsA("Folder") then
@@ -219,6 +252,7 @@ local function storeCharacterTemplate(templates: Folder, key: string, assetId: n
 	if loaded == nil then
 		return false
 	end
+	sanitizeCharacterVisual(loaded)
 	local _, size = loaded:GetBoundingBox()
 	local largestExtent = math.max(size.X, size.Y, size.Z)
 	if largestExtent > 8 then
@@ -252,6 +286,9 @@ local function createNpcActor(
 	local humanoid = Instance.new("Humanoid")
 	humanoid.Name = "Humanoid"
 	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.HipHeight = 2
+	humanoid.AutoRotate = true
+	humanoid.WalkSpeed = 16
 	humanoid.Parent = actor
 
 	local visualAnchor = Instance.new("Part")
@@ -272,7 +309,7 @@ local function createNpcActor(
 
 	local visual = template:Clone()
 	visual.Name = "Visual"
-	removeExecutableDescendants(visual)
+	sanitizeCharacterVisual(visual)
 	local visualBounds, visualSize = visual:GetBoundingBox()
 	local visualBottom = visualBounds.Position.Y - visualSize.Y / 2
 	local desiredBottom = target.Position.Y - root.Size.Y / 2
@@ -292,6 +329,8 @@ local function createNpcActor(
 			visualPartCount += 1
 			descendant.Anchored = false
 			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
 			descendant.Massless = true
 			local weld = Instance.new("WeldConstraint")
 			weld.Part0 = visualAnchor
@@ -316,6 +355,14 @@ local function createNpcActor(
 		weld.Part1 = fallback
 		weld.Parent = fallback
 	end
+
+	local humanoidCount = 0
+	for _, descendant in actor:GetDescendants() do
+		if descendant:IsA("Humanoid") then
+			humanoidCount += 1
+		end
+	end
+	assert(humanoidCount == 1, `{cloneName} must contain exactly one authoritative Humanoid`)
 
 	return actor
 end

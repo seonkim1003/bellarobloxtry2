@@ -29,6 +29,21 @@ function PathAgent.new(model: Model, parameters: { [string]: any }?): PathAgent?
 		warn(`NPC {model:GetFullName()} needs a Humanoid and HumanoidRootPart`)
 		return nil
 	end
+	local humanoidCount = 0
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Humanoid") then
+			humanoidCount += 1
+			if descendant ~= humanoid then
+				warn(`[PathAgent] Removing non-authoritative Humanoid from {model:GetFullName()}`)
+				descendant:Destroy()
+			end
+		end
+	end
+	if humanoidCount ~= 1 then
+		warn(
+			`[PathAgent] {model:GetFullName()} had {humanoidCount} Humanoids; expected exactly one`
+		)
+	end
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") and not descendant.Anchored then
 			pcall(function()
@@ -62,7 +77,8 @@ function PathAgent.MoveTo(self: PathAgent, destination: Vector3)
 	local now = os.clock()
 	if self.moving and self.lastDestination then
 		local destinationShift = (destination - self.lastDestination).Magnitude
-		if destinationShift < 4 or now - self.lastMoveStartedAt < 0.4 then
+		local elapsed = now - self.lastMoveStartedAt
+		if destinationShift < 4 and elapsed < 2 then
 			return
 		end
 	end
@@ -90,19 +106,36 @@ function PathAgent.MoveTo(self: PathAgent, destination: Vector3)
 	end
 
 	local waypoints = path:GetWaypoints()
+	if #waypoints < 2 then
+		self.humanoid:MoveTo(destination)
+		self.moving = false
+		return
+	end
 	task.spawn(function()
 		local blocked = false
+		local currentWaypointIndex = 2
 		local blockedConnection = path.Blocked:Connect(function(blockedIndex)
-			if blockedIndex >= 2 then
+			if blockedIndex >= currentWaypointIndex then
 				blocked = true
+				-- Interrupt MoveToFinished:Wait so this route can recover immediately.
 				self.humanoid:MoveTo(self.root.Position)
 			end
 		end)
 		for index = 2, #waypoints do
+			currentWaypointIndex = index
 			if generation ~= self.generation or not self.model:IsDescendantOf(game) or blocked then
 				blockedConnection:Disconnect()
 				if generation == self.generation then
 					self.moving = false
+					if blocked then
+						task.defer(function()
+							if
+								generation == self.generation and self.model:IsDescendantOf(game)
+							then
+								self:MoveTo(destination)
+							end
+						end)
+					end
 				end
 				return
 			end
@@ -112,10 +145,15 @@ function PathAgent.MoveTo(self: PathAgent, destination: Vector3)
 			end
 			self.humanoid:MoveTo(waypoint.Position)
 			local reached = self.humanoid.MoveToFinished:Wait()
-			if not reached then
+			if blocked or not reached then
 				blockedConnection:Disconnect()
 				if generation == self.generation then
 					self.moving = false
+					task.defer(function()
+						if generation == self.generation and self.model:IsDescendantOf(game) then
+							self:MoveTo(destination)
+						end
+					end)
 				end
 				return
 			end

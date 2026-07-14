@@ -58,7 +58,11 @@ function HostileNpcService._tryAttach(self: any, candidate: Instance)
 	if candidate:GetAttribute(Contract.Attributes.NPCType) ~= self.npcType then
 		return
 	end
-	self.agent = PathAgent.new(candidate)
+	self.agent = PathAgent.new(candidate, {
+		AgentRadius = 2,
+		AgentHeight = 5,
+		AgentCanJump = true,
+	})
 	if self.agent then
 		self.agent.humanoid.WalkSpeed = self.settings.WalkSpeed
 	end
@@ -119,6 +123,9 @@ function HostileNpcService._step(self: any)
 	local character = player and player.Character
 	local targetRoot = character and character:FindFirstChild("HumanoidRootPart")
 	if not player or not character or not targetRoot or not targetRoot:IsA("BasePart") then
+		if self.npcType == "Bella" then
+			return
+		end
 		self:_patrol()
 		return
 	end
@@ -186,6 +193,11 @@ function HostileNpcService.SetActive(self: any, active: boolean)
 	self.active = active
 	if active then
 		self:_discover()
+		if not self.agent then
+			warn(
+				`[HostileNpc] No {self.npcType} actor found; expected a Model in Workspace.ContentNPCs`
+			)
+		end
 		self.elapsed = Config.NPC.RepathSeconds
 	end
 	if not active and self.agent then

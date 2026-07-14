@@ -205,12 +205,10 @@ function GameplayService._tryCompleteMazeExit(self: any, instance: Instance, pla
 		return
 	end
 	if
-		not self.validator.IsNear(player, instance, Config.Validation.DefaultInteractionDistance)
+		not self.validator.IsNear(player, instance, Config.Validation.MazeExitInteractionDistance)
 	then
 		return
 	end
-
-	-- MazeIntro is not a cinematic. If its client acknowledgement was lost, the
 	-- server repairs the state before completing the exit instead of leaving the
 	-- player stranded at a valid finish.
 	if self.storyService:GetState() == Contract.States.MazeIntro then
@@ -243,7 +241,7 @@ function GameplayService._pollMazeExit(self: any, dt: number)
 		if exitPart.Parent == nil then
 			self.mazeExits[exitPart] = nil
 		elseif
-			self.validator.IsNear(player, exitPart, Config.Validation.DefaultInteractionDistance)
+			self.validator.IsNear(player, exitPart, Config.Validation.MazeExitInteractionDistance)
 		then
 			self:_tryCompleteMazeExit(exitPart, player)
 			return
@@ -264,6 +262,7 @@ function GameplayService._bindMazeExit(self: any, instance: Instance)
 	end)
 	if prompt then
 		self.mazePrompts[instance] = prompt
+		prompt.MaxActivationDistance = Config.Validation.MazeExitInteractionDistance
 		local state = self.storyService:GetState()
 		prompt.Enabled = state == Contract.States.MazeIntro or state == Contract.States.BellaChase
 	end
@@ -378,7 +377,37 @@ function GameplayService._movePlayerToScene(self: any, player: Player, sceneId: 
 	end
 end
 
+function GameplayService._armCinematicRecovery(self: any, state: string)
+	local recoverySeconds = Config.Story.CinematicRecoverySeconds[state]
+	local nextState = RuntimeRules.cinematicNextState(state)
+	if typeof(recoverySeconds) ~= "number" or recoverySeconds <= 0 or not nextState then
+		return
+	end
+
+	local revision = self.storyService:GetRevision()
+	local stateEnteredAt = self.storyService:GetStateEnteredAt()
+	task.delay(recoverySeconds, function()
+		if
+			RuntimeRules.shouldRecoverCinematic(
+				self.storyService:GetState(),
+				self.storyService:GetRevision(),
+				stateEnteredAt,
+				state,
+				revision,
+				os.clock(),
+				recoverySeconds
+			)
+		then
+			warn(
+				`Recovering cinematic {state} revision {revision} after {recoverySeconds} seconds without a valid acknowledgement`
+			)
+			self.storyService:Transition(nextState, `CinematicRecovery:{state}`)
+		end
+	end)
+end
+
 function GameplayService._onStateChanged(self: any, state: string)
+	self:_armCinematicRecovery(state)
 	self.friendlyRambo:SetActive(
 		state == Contract.States.MazeIntro or state == Contract.States.BellaChase
 	)

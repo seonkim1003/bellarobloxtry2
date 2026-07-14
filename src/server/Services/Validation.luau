@@ -37,6 +37,26 @@ function Validation.IsStoryState(storyService: any, expectedState: string): bool
 	return storyService:GetState() == expectedState
 end
 
+function Validation.DistanceToInstance(root: BasePart, target: Instance): number?
+	if target:IsA("BasePart") then
+		local localPoint = target.CFrame:PointToObjectSpace(root.Position)
+		local half = target.Size / 2
+		local clamped = Vector3.new(
+			math.clamp(localPoint.X, -half.X, half.X),
+			math.clamp(localPoint.Y, -half.Y, half.Y),
+			math.clamp(localPoint.Z, -half.Z, half.Z)
+		)
+		local closest = target.CFrame:PointToWorldSpace(clamped)
+		return (root.Position - closest).Magnitude
+	end
+
+	if target:IsA("Model") then
+		return (root.Position - target:GetPivot().Position).Magnitude
+	end
+
+	return nil
+end
+
 function Validation.IsNear(player: Player, target: Instance, maximumDistance: number): boolean
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -44,14 +64,8 @@ function Validation.IsNear(player: Player, target: Instance, maximumDistance: nu
 		return false
 	end
 
-	local targetPosition: Vector3?
-	if target:IsA("BasePart") then
-		targetPosition = target.Position
-	elseif target:IsA("Model") then
-		targetPosition = target:GetPivot().Position
-	end
-
-	return targetPosition ~= nil and (root.Position - targetPosition).Magnitude <= maximumDistance
+	local distance = Validation.DistanceToInstance(root, target)
+	return distance ~= nil and distance <= maximumDistance
 end
 
 function Validation.ConsumeOnce(self: Validator, key: string): boolean

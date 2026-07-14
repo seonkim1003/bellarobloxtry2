@@ -132,7 +132,10 @@ end
 assert(#findTagged("StoryTrigger", "MarkerId", "TowerTop") == 1, "TowerTop trigger missing")
 assert(#findTagged("CinematicMarker", "MarkerId", "RamboGuideTarget") >= 3, "Rambo route missing")
 assert(#findTagged("NPCSpawn", "NPCType", "FriendlyRambo") == 1, "FriendlyRambo spawn missing")
+assert(#findTagged("NPCSpawn", "NPCType", "Bella") >= 1, "Bella spawn marker missing")
 assert(#findTagged("NPCSpawn", "NPCType", "EvilRambo") == 1, "EvilRambo spawn missing")
+assert(#findTagged("MazeExit") >= 1, "MazeExit marker missing")
+assert(#findTagged("CinematicMarker", "MarkerId", "KidnapHold") >= 1, "KidnapHold marker missing")
 assert(#findTagged("LetterFragment") == 3, "Expected exactly three server-authored fragments")
 
 for _, point in findTagged("PatrolPoint") do
@@ -167,6 +170,20 @@ assert(
 		and string.find(presenterSource, "d.gui.showRevive(true)", 1, true),
 	"Revive choice must stay hidden until its cinematic completes"
 )
+assert(
+	string.find(presenterSource, "d.sprint:enable()", 1, true)
+		and string.find(presenterSource, "d.sprint:disable()", 1, true)
+		and string.find(presenterSource, "d.asmr:start()", 1, true)
+		and string.find(presenterSource, "d.asmr:stop()", 1, true),
+	"Object-backed sprint and ASMR dependencies must be invoked with self"
+)
+assert(
+	not string.find(presenterSource, "d.sprint.enable()", 1, true)
+		and not string.find(presenterSource, "d.sprint.disable()", 1, true)
+		and not string.find(presenterSource, "d.asmr.start()", 1, true)
+		and not string.find(presenterSource, "d.asmr.stop()", 1, true),
+	"Object-backed sprint and ASMR dependencies must never use self-less dot calls"
+)
 local adminSource = fs.readFile("src/server/Services/AdminService.luau")
 assert(
 	string.find(adminSource, 'Secrets.AdminPassword ~= "CHANGE-ME-BEFORE-PUBLISHING"', 1, true),
@@ -187,13 +204,48 @@ assert(
 	"Maze exit must have server-validated touch and distance fallbacks"
 )
 assert(
-	string.find(gameplaySource, '"MazeIntroComplete"', 1, true),
-	"Non-cinematic MazeIntro must have a server-owned completion fallback"
+	string.find(gameplaySource, "MazeExitInteractionDistance", 1, true),
+	"Maze exit must use a generous closest-point interaction radius"
+)
+assert(
+	string.find(gameplaySource, "function GameplayService._armCinematicRecovery", 1, true)
+		and string.find(gameplaySource, "RuntimeRules.shouldRecoverCinematic", 1, true)
+		and string.find(gameplaySource, "CinematicRecovery:", 1, true),
+	"Every cinematic state must have server-owned recovery from a missing client acknowledgement"
+)
+local cinematicSource = fs.readFile("src/client/Cinematics/CinematicPlayer.luau")
+assert(
+	string.find(cinematicSource, "kidnapStage:prepare()", 1, true)
+		and string.find(cinematicSource, "kidnapStage:getFocusCFrame", 1, true)
+		and string.find(cinematicSource, "kidnapStage:beginPhase", 1, true),
+	"Kidnap cutscene must call KidnapStage methods with self"
+)
+local hostileSource = fs.readFile("src/server/NPC/HostileNpcService.luau")
+assert(
+	string.find(hostileSource, 'if self.npcType == "Bella" then', 1, true),
+	"Bella must have dedicated chase fallback behavior"
 )
 local assetMountSource = fs.readFile("src/shared/ContentAssetMount.luau")
 assert(
 	string.find(assetMountSource, 'descendant:IsA("LuaSourceContainer")', 1, true),
 	"Marketplace assets must remove executable descendants"
+)
+assert(
+	string.find(assetMountSource, 'instance:IsA("Humanoid")', 1, true)
+		and string.find(assetMountSource, "sanitizeCharacterVisual", 1, true)
+		and string.find(assetMountSource, 'instance:IsA("Sound")', 1, true)
+		and string.find(assetMountSource, 'instance:IsA("ClickDetector")', 1, true)
+		and string.find(assetMountSource, 'instance:IsA("ProximityPrompt")', 1, true)
+		and string.find(assetMountSource, "descendant.CanCollide = false", 1, true)
+		and string.find(assetMountSource, "descendant.CanTouch = false", 1, true)
+		and string.find(assetMountSource, "descendant.Massless = true", 1, true),
+	"Marketplace NPC visuals must remove competing controllers and disable body physics"
+)
+local pathAgentSource = fs.readFile("src/server/NPC/PathAgent.luau")
+assert(
+	string.find(pathAgentSource, "local currentWaypointIndex", 1, true)
+		and string.find(pathAgentSource, "blockedIndex >= currentWaypointIndex", 1, true),
+	"Path blockage recovery must ignore waypoints the NPC already passed"
 )
 assert(
 	string.find(assetMountSource, 'CollectionService:AddTag(actor, "NPCSpawn")', 1, true),
