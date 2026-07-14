@@ -15,24 +15,24 @@ assert(RuntimeRules.canStartStory("Admin", true, "RoleLobby") == false, "admin c
 
 assert(RuntimeRules.canTransition("RoleLobby", "MazeIntro") == true, "lobby->maze")
 assert(RuntimeRules.canTransition("RoleLobby", "Credits") == false, "lobby cannot skip to credits")
-assert(RuntimeRules.cinematicNextState("DogFight") == "Epilogue", "dogfight advances")
+assert(RuntimeRules.cinematicNextState("DogFight") == nil, "dogfight requires server generation")
 assert(RuntimeRules.cinematicNextState("BellaChase") == nil, "chase is not cinematic-ack")
 
 local now = 100
 assert(
-	RuntimeRules.isCinematicAckValid("DogFight", 3, 90, "DogFight", 3, now, 5.5) == true,
-	"valid dogfight ack after dwell"
+	RuntimeRules.isCinematicAckValid("DogFight", 3, 90, "DogFight", 3, now, 5.5) == false,
+	"dogfight cannot advance through a cinematic acknowledgement"
 )
 assert(
-	RuntimeRules.isCinematicAckValid("DogFight", 3, 96, "DogFight", 3, now, 5.5) == false,
+	RuntimeRules.isCinematicAckValid("RamboTaken", 3, 96, "RamboTaken", 3, now, 5.5) == false,
 	"reject early cinematic ack"
 )
 assert(
-	RuntimeRules.isCinematicAckValid("DogFight", 3, 90, "DogFight", 4, now, 5.5) == false,
+	RuntimeRules.isCinematicAckValid("RamboTaken", 3, 90, "RamboTaken", 4, now, 5.5) == false,
 	"reject stale revision"
 )
 assert(
-	RuntimeRules.isCinematicAckValid("DogFight", 3, 90, "LetterTheft", 3, now, 5.5) == false,
+	RuntimeRules.isCinematicAckValid("RamboTaken", 3, 90, "LetterTheft", 3, now, 5.5) == false,
 	"reject mismatched cue"
 )
 

@@ -6,12 +6,27 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
+local ContentConfig = require(GameShared:WaitForChild("ContentConfig"))
 local Contract = require(GameShared:WaitForChild("StoryContract"))
 local Config = require(GameShared:WaitForChild("SystemsConfig"))
+local ProgressionRules = require(GameShared:WaitForChild("ProgressionRules"))
 local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local GameplayService = {}
 GameplayService.__index = GameplayService
+
+local function serverAuthoredFragmentIds(): { [string]: boolean }
+	local result: { [string]: boolean } = {}
+	for _, marker in ContentConfig.placeholderObjects do
+		if marker.tag == Contract.Tags.LetterFragment then
+			local fragmentId = marker.attributes[Contract.Attributes.FragmentId]
+			if typeof(fragmentId) == "string" and fragmentId ~= "" then
+				result[fragmentId] = true
+			end
+		end
+	end
+	return table.freeze(result)
+end
 
 local function setFragmentVisualVisible(fragmentId: string, visible: boolean)
 	local contentProps = workspace:FindFirstChild("ContentProps")
@@ -56,6 +71,7 @@ function GameplayService.new(
 		bella = bella,
 		evilRambo = evilRambo,
 		fragments = {} :: { [string]: boolean },
+		serverFragmentIds = serverAuthoredFragmentIds(),
 		fragmentCount = 0,
 		towerSteps = {} :: { [number]: boolean },
 		towerStepCount = 0,
@@ -84,15 +100,21 @@ function GameplayService._bindTowerStep(self: any, instance: Instance)
 		if not player or player.Character ~= character or not self:_isProtagonist(player) then
 			return
 		end
+		if not self.validator:AllowRate(player, "TowerStep", 64, 2) then
+			return
+		end
 		local sequenceIndex = instance:GetAttribute(Contract.Attributes.SequenceIndex)
 		if
-			typeof(sequenceIndex) ~= "number"
-			or sequenceIndex < 1
-			or sequenceIndex > Config.Story.TowerStepCount
-			or self.towerSteps[sequenceIndex]
+			not ProgressionRules.canCollectTowerStep(
+				self.towerSteps,
+				self.towerStepCount,
+				sequenceIndex,
+				Config.Story.TowerStepCount
+			)
 		then
 			return
 		end
+		assert(typeof(sequenceIndex) == "number", "validated tower index must be numeric")
 		self.towerSteps[sequenceIndex] = true
 		self.towerStepCount += 1
 		self:_fireObjective(
@@ -212,6 +234,9 @@ function GameplayService._tryCompleteMazeExit(self: any, instance: Instance, pla
 	if not self:_isProtagonist(player) then
 		return
 	end
+	if not self.validator:AllowRate(player, "MazeExit", 4, 2) then
+		return
+	end
 	if
 		not self.validator.IsNear(player, instance, Config.Validation.MazeExitInteractionDistance)
 	then
@@ -293,6 +318,7 @@ function GameplayService._bindStoryTrigger(self: any, instance: Instance)
 	local prompt = self:_bindPrompt(instance, "Reach the top", function(player)
 		if
 			self:_isProtagonist(player)
+			and self.validator:AllowRate(player, "TowerTop", 2, 2)
 			and self.validator.IsNear(
 				player,
 				instance,
@@ -317,9 +343,17 @@ function GameplayService._bindStoryTrigger(self: any, instance: Instance)
 end
 
 function GameplayService._bindFragment(self: any, instance: Instance)
+	local authoredFragmentId = instance:GetAttribute(Contract.Attributes.FragmentId)
+	if
+		typeof(authoredFragmentId) ~= "string"
+		or self.serverFragmentIds[authoredFragmentId] ~= true
+	then
+		return
+	end
 	local prompt = self:_bindPrompt(instance, "Collect fragment", function(player)
 		if
 			not self:_isProtagonist(player)
+			or not self.validator:AllowRate(player, "FragmentCollect", 6, 2)
 			or not self.validator.IsNear(
 				player,
 				instance,
@@ -330,9 +364,18 @@ function GameplayService._bindFragment(self: any, instance: Instance)
 			return
 		end
 		local fragmentId = instance:GetAttribute(Contract.Attributes.FragmentId)
-		if typeof(fragmentId) ~= "string" or fragmentId == "" or self.fragments[fragmentId] then
+		if
+			not ProgressionRules.canCollectFragment(
+				self.serverFragmentIds,
+				self.fragments,
+				self.fragmentCount,
+				fragmentId,
+				Config.Story.FragmentCount
+			)
+		then
 			return
 		end
+		assert(typeof(fragmentId) == "string", "validated fragment ID must be a string")
 		self.fragments[fragmentId] = true
 		self.fragmentCount += 1
 		instance:SetAttribute("Collected", true)
@@ -358,6 +401,7 @@ function GameplayService._bindFragment(self: any, instance: Instance)
 end
 
 function GameplayService._movePlayerToScene(self: any, player: Player, sceneId: string)
+	self.checkpoints:Clear(player)
 	if self.checkpoints:Set(player, sceneId) then
 		if not self.checkpoints:Respawn(player) then
 			local connection: RBXScriptConnection?
@@ -367,7 +411,13 @@ function GameplayService._movePlayerToScene(self: any, player: Player, sceneId: 
 					connection = nil
 				end
 				task.defer(function()
-					if player.Parent == Players and self:_isProtagonist(player) then
+					if
+						player.Parent == Players
+						and (
+							sceneId == Config.Story.LobbyCheckpointSceneId
+							or self:_isProtagonist(player)
+						)
+					then
 						self.checkpoints:Respawn(player)
 					end
 				end)
@@ -452,6 +502,10 @@ function GameplayService._onStateChanged(self: any, state: string)
 				prompt.Enabled = false
 			end
 		end
+		for _, lobbyPlayer in Players:GetPlayers() do
+			self:_movePlayerToScene(lobbyPlayer, Config.Story.LobbyCheckpointSceneId)
+		end
+		return
 	end
 	local player = self.roleService:GetProtagonist()
 	if not player then
@@ -468,13 +522,24 @@ function GameplayService._onStateChanged(self: any, state: string)
 				self.storyService:Transition(Contract.States.BellaChase, "MazeIntroComplete")
 			end
 		end)
-	elseif state == Contract.States.RoleLobby then
-		self:_movePlayerToScene(player, Config.Story.LobbyCheckpointSceneId)
 	elseif state == Contract.States.GuideEncounter or state == Contract.States.TowerClimb then
 		table.clear(self.towerSteps)
 		self.towerStepCount = 0
 		self:_movePlayerToScene(player, Config.Story.TowerCheckpointSceneId)
 	elseif state == Contract.States.FieldHunt then
+		table.clear(self.fragments)
+		self.fragmentCount = 0
+		for _, fragment in CollectionService:GetTagged(Contract.Tags.LetterFragment) do
+			fragment:SetAttribute("Collected", false)
+			local fragmentId = fragment:GetAttribute(Contract.Attributes.FragmentId)
+			if typeof(fragmentId) == "string" then
+				setFragmentVisualVisible(fragmentId, true)
+			end
+			local prompt = self.fragmentPrompts[fragment]
+			if prompt then
+				prompt.Enabled = true
+			end
+		end
 		self:_movePlayerToScene(player, Config.Story.FieldCheckpointSceneId)
 	elseif state == Contract.States.Epilogue then
 		self:_movePlayerToScene(player, Config.Story.EpilogueCheckpointSceneId)
@@ -521,6 +586,9 @@ function GameplayService.Start(self: any)
 
 	self.remotes[Contract.ClientEvents.CinematicFinished].OnServerEvent:Connect(
 		function(player, payload)
+			if not self.validator:AllowAction(player, Contract.ClientEvents.CinematicFinished) then
+				return
+			end
 			if not self:_isProtagonist(player) or typeof(payload) ~= "table" then
 				return
 			end
@@ -529,10 +597,10 @@ function GameplayService.Start(self: any)
 			if typeof(cueId) ~= "string" or typeof(revision) ~= "number" then
 				return
 			end
-			if not self.validator:AllowAction(player, Contract.ClientEvents.CinematicFinished) then
+			local state = self.storyService:GetState()
+			if state == Contract.States.DogFight then
 				return
 			end
-			local state = self.storyService:GetState()
 			local minimumSeconds = Config.Story.CinematicMinimumSeconds[state] or 0
 			if
 				not RuntimeRules.isCinematicAckValid(
@@ -548,7 +616,7 @@ function GameplayService.Start(self: any)
 				return
 			end
 			local nextState = RuntimeRules.cinematicNextState(state)
-			if nextState then
+			if nextState and self.validator:ConsumeOnce(`Cinematic:{state}:{revision}`) then
 				self.storyService:Transition(nextState, `Cinematic:{cueId}`)
 			end
 		end
@@ -556,11 +624,13 @@ function GameplayService.Start(self: any)
 
 	self.remotes[Contract.ClientEvents.ReviveConfirmed].OnServerEvent:Connect(
 		function(player, confirmed)
+			if not self.validator:AllowAction(player, Contract.ClientEvents.ReviveConfirmed) then
+				return
+			end
 			if
 				not self:_isProtagonist(player)
 				or typeof(confirmed) ~= "boolean"
 				or not self.validator.IsStoryState(self.storyService, Contract.States.RevivePrompt)
-				or not self.validator:AllowAction(player, Contract.ClientEvents.ReviveConfirmed)
 			then
 				return
 			end
@@ -576,10 +646,12 @@ function GameplayService.Start(self: any)
 	)
 
 	self.remotes[Contract.ClientEvents.ReplayRequested].OnServerEvent:Connect(function(player)
+		if not self.validator:AllowAction(player, Contract.ClientEvents.ReplayRequested) then
+			return
+		end
 		if
 			self:_isProtagonist(player)
 			and self.validator.IsStoryState(self.storyService, Contract.States.Credits)
-			and self.validator:AllowAction(player, Contract.ClientEvents.ReplayRequested)
 		then
 			self:_resetRun()
 		end

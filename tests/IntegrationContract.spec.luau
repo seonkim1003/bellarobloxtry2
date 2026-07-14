@@ -328,10 +328,9 @@ assert(
 )
 local bootstrapSource = fs.readFile("src/server/Bootstrap.server.luau")
 assert(
-	string.find(bootstrapSource, 'stageChoice == "Obby"', 1, true)
-		and string.find(bootstrapSource, "Contract.States.TowerClimb", 1, true)
-		and string.find(bootstrapSource, 'stageChoice == "Scavenger Hunt"', 1, true)
-		and string.find(bootstrapSource, "Contract.States.FieldHunt", 1, true),
+	string.find(bootstrapSource, "ProgressionRules.parseLobbySelection(payload)", 1, true)
+		and string.find(bootstrapSource, "ProgressionRules.startStateForStage", 1, true)
+		and string.find(bootstrapSource, "story:StartFor(player, selectedState)", 1, true),
 	"Lobby stage choices must map to their authoritative starting states"
 )
 local roleServiceSource = fs.readFile("src/server/Services/RoleService.luau")
