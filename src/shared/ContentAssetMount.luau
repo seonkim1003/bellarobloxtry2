@@ -480,6 +480,20 @@ local function createNpcActor(
 	)
 	visual.Parent = actor
 
+	-- Preserve authored Motor6D joints for animated character rigs. Rigid-welding
+	-- every visual part to VisualAnchor freezes those joints permanently.
+	local motorParts: { [BasePart]: boolean } = {}
+	for _, descendant in visual:GetDescendants() do
+		if descendant:IsA("Motor6D") then
+			if descendant.Part0 then
+				motorParts[descendant.Part0] = true
+			end
+			if descendant.Part1 then
+				motorParts[descendant.Part1] = true
+			end
+		end
+	end
+	local hasMotors = next(motorParts) ~= nil
 	local visualPartCount = 0
 	for _, descendant in visual:GetDescendants() do
 		if descendant:IsA("BasePart") then
@@ -489,10 +503,29 @@ local function createNpcActor(
 			descendant.CanTouch = false
 			descendant.CanQuery = false
 			descendant.Massless = true
+			if not hasMotors or not motorParts[descendant] then
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = visualAnchor
+				weld.Part1 = descendant
+				weld.Parent = descendant
+			end
+		end
+	end
+
+	if hasMotors then
+		local rootPart = visual.PrimaryPart
+		if rootPart == nil then
+			for part in motorParts do
+				rootPart = part
+				break
+			end
+		end
+		if rootPart then
 			local weld = Instance.new("WeldConstraint")
+			weld.Name = "VisualRootWeld"
 			weld.Part0 = visualAnchor
-			weld.Part1 = descendant
-			weld.Parent = descendant
+			weld.Part1 = rootPart
+			weld.Parent = rootPart
 		end
 	end
 

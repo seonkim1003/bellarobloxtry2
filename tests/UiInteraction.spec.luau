@@ -79,4 +79,10 @@ for _, screenApi in { "showTitle", "showRevive", "showCredits", "showLeaveConfir
 	)
 end
 
+assert(
+	string.find(mainSource, "DogFightPresenter", 1, true)
+		and string.find(presenterSource, "d.dogFight:play(", 1, true),
+	"DogFight must use DogFightPresenter instead of silhouette stage"
+)
+
 print(`ui interaction audit passed: {#buttons} buttons, all story states, all stage routes`)

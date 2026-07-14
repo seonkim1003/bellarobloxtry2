@@ -1,32 +1,91 @@
 --!strict
 --[[
 	Epilogue table presentation: collar/tag focus, no blood/remains/meat.
+	Actors and props persist through Credits until lobby/replay clears them.
 ]]
 
 local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local EpilogueProps = {}
 
-function EpilogueProps.mount(): Model?
-	local spawn: BasePart? = nil
+local FOLDER_NAME = "ContentEpilogue"
+local ACTOR_FOLDER = "EpilogueActors"
+
+local function findSceneSpawn(): BasePart?
 	for _, tagged in CollectionService:GetTagged("SceneSpawn") do
-		if tagged:IsA("BasePart") and tagged:GetAttribute("SceneId") == "Epilogue" then
-			spawn = tagged
-			break
+		if tagged:IsA("BasePart") then
+			local sceneId = tagged:GetAttribute("SceneId")
+			if sceneId == "Epilogue" or sceneId == "EpilogueSeat" then
+				return tagged
+			end
 		end
 	end
+	return nil
+end
+
+local function findNpcSpawn(npcType: string): BasePart?
+	for _, tagged in CollectionService:GetTagged("NPCSpawn") do
+		if tagged:IsA("BasePart") and tagged:GetAttribute("NPCType") == npcType then
+			return tagged
+		end
+	end
+	return nil
+end
+
+local function ensureFolder(): Folder
+	local folder = Workspace:FindFirstChild(FOLDER_NAME)
+	if folder and folder:IsA("Folder") then
+		return folder
+	end
+	local created = Instance.new("Folder")
+	created.Name = FOLDER_NAME
+	created.Parent = Workspace
+	return created
+end
+
+local function cloneActor(templateName: string, actorName: string, at: CFrame): Model?
+	local templates = ReplicatedStorage:FindFirstChild("ContentModels")
+	local template = if templates then templates:FindFirstChild(templateName) else nil
+	local model: Model
+	if template and template:IsA("Model") then
+		model = template:Clone()
+	else
+		model = Instance.new("Model")
+		local part = Instance.new("Part")
+		part.Name = "FallbackVisual"
+		part.Size = Vector3.new(2.5, 4, 2)
+		part.Color = Color3.fromRGB(150, 130, 110)
+		part.Anchored = true
+		part.CanCollide = false
+		part.Parent = model
+		model.PrimaryPart = part
+	end
+	model.Name = actorName
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+		end
+	end
+	if model.PrimaryPart == nil then
+		local part = model:FindFirstChildWhichIsA("BasePart", true)
+		if part then
+			model.PrimaryPart = part
+		end
+	end
+	model:PivotTo(at)
+	return model
+end
+
+function EpilogueProps.mount(): Model?
+	local spawn = findSceneSpawn()
 	if spawn == nil then
 		return nil
 	end
 
-	local folder = Workspace:FindFirstChild("ContentEpilogue")
-	if folder == nil then
-		folder = Instance.new("Folder")
-		folder.Name = "ContentEpilogue"
-		folder.Parent = Workspace
-	end
-
+	local folder = ensureFolder()
 	local existing = folder:FindFirstChild("CollarReveal")
 	if existing and existing:IsA("Model") then
 		return existing
@@ -92,11 +151,30 @@ function EpilogueProps.mount(): Model?
 
 	model.PrimaryPart = tableTop
 	model.Parent = folder
+
+	local actorsFolder = folder:FindFirstChild(ACTOR_FOLDER)
+	local actors: Folder
+	if actorsFolder and actorsFolder:IsA("Folder") then
+		actors = actorsFolder
+	else
+		actors = Instance.new("Folder")
+		actors.Name = ACTOR_FOLDER
+		actors.Parent = folder
+	end
+
+	local gigiSpawn = findNpcSpawn("Gigi")
+	if gigiSpawn and actors:FindFirstChild("EpilogueGigi") == nil then
+		local gigi = cloneActor("Gigi", "EpilogueGigi", gigiSpawn.CFrame)
+		if gigi then
+			gigi.Parent = actors
+		end
+	end
+
 	return model
 end
 
 function EpilogueProps.clear()
-	local folder = Workspace:FindFirstChild("ContentEpilogue")
+	local folder = Workspace:FindFirstChild(FOLDER_NAME)
 	if folder then
 		folder:Destroy()
 	end

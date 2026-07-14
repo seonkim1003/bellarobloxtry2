@@ -17,7 +17,7 @@ export type DirectorDeps = {
 	sprint: any,
 	asmr: any,
 	robber: any,
-	silhouettes: any,
+	dogFight: any,
 	kidnapStage: any,
 	epilogueProps: any,
 	fragmentFeedback: any,
@@ -116,7 +116,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.gui.showRevive(false)
 		d.letterPanel.hide()
 		d.detection.reset()
-		d.silhouettes.clear()
+		d.dogFight:clear()
 		d.epilogueProps.clear()
 		d.lighting.applyScene("Lobby")
 		d.audio.ambienceForScene("Lobby")
@@ -235,15 +235,26 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 			end)
 		end)
 	elseif state == "DogFight" then
-		d.silhouettes.mount()
-		d.audio.playDogFightImpact()
-		d.cinematics:playDogFightSilhouette(function()
+		d.sprint:disable()
+		d.firstPerson.release()
+		d.gui.setObjective("Shapes in the fog...")
+		local humanoid = Players.LocalPlayer.Character
+			and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			self._lockedHumanoid = humanoid
+			self._savedWalkSpeed = humanoid.WalkSpeed
+			humanoid.WalkSpeed = 0
+		end
+		local revision = if typeof(payload) == "table" then payload.revision else nil
+		d.dogFight:play(revision, function()
+			self:_restorePlayerMovement()
+			d.sprint:enable()
 			self:_finishCinematic(function()
 				self:_finishCue(payload)
 			end)
 		end)
 	elseif state == "Epilogue" then
-		d.silhouettes.clear()
+		d.dogFight:clear()
 		d.lighting.applyScene("Epilogue")
 		d.epilogueProps.mount()
 		d.gui.setObjective("One hour later")
@@ -259,6 +270,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		end)
 	elseif state == "LetterReveal" then
 		-- LetterPanel owns the twist body copy; avoid repeating it as a subtitle.
+		-- Keep epilogue actors/props mounted through Credits.
 		d.letterPanel.show(true)
 		d.gui.setSubtitle("Gigi", ContentConfig.dialogue.letterReveal[1].text)
 		d.cinematics:playSequence("letterReveal", function()
@@ -267,6 +279,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 			end)
 		end)
 	elseif state == "Credits" then
+		-- Epilogue props intentionally remain until lobby/reset.
 		d.letterPanel.hide()
 		d.gui.showCredits(true)
 		d.sprint:disable()
@@ -321,7 +334,7 @@ function StoryPresenter.resetForReplay(self: StoryPresenter)
 	d.sprint:enable()
 	d.detection.reset()
 	d.letterPanel.reset()
-	d.silhouettes.clear()
+	d.dogFight:clear()
 	d.kidnapStage:clear()
 	d.epilogueProps.clear()
 	d.robber.clear()

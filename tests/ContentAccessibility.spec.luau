@@ -21,6 +21,15 @@ assert(type(anims.kidnapHold) == "string", "kidnapHold animation id")
 assert(type(anims.reviveKneel) == "string", "reviveKneel animation id")
 assert(type(anims.corruptionPulse) == "string", "corruptionPulse animation id")
 
+local AnimationIds = require("../src/shared/AnimationIds")
+local DogFightTimeline = require("../src/shared/DogFightTimeline")
+assert(AnimationIds.isPlaceholder(AnimationIds.KidnapHold), "AnimationIds must stay placeholder")
+assert(DogFightTimeline.BeatCount == 8, "DogFightTimeline beat count")
+assert(
+	fs.isFile("src/client/Presentation/DogFightPresenter.luau"),
+	"DogFightPresenter replaces silhouette stage"
+)
+
 local configSource = fs.readFile("src/shared/ContentConfig.luau")
 assert(
 	string.find(configSource, "PLACEHOLDER_ANIMATION", 1, true),
