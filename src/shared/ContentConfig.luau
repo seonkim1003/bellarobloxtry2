@@ -741,6 +741,7 @@ local ContentConfig = {
 		"FragmentUpdate",
 		"RoleUpdate",
 		"AdminDiagnostics",
+		"FightBeat",
 	},
 	clientRequests = {
 		"CinematicFinished",

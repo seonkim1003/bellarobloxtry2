@@ -1,7 +1,7 @@
 --!strict
 
 return table.freeze({
-	ContractVersion = 1,
+	ContractVersion = 2,
 	Startup = table.freeze({
 		ContentMountTimeoutSeconds = 20,
 	}),

@@ -3,7 +3,7 @@
 
 local StoryContract = {}
 
-StoryContract.Version = 1
+StoryContract.Version = 2
 
 StoryContract.Roles = table.freeze({
 	Unassigned = "Unassigned",
@@ -28,12 +28,21 @@ StoryContract.States = table.freeze({
 	Credits = "Credits",
 })
 
+-- FightBeat payload (frozen):
+-- {
+-- 	contractVersion = 2,
+-- 	storyRevision = number,
+-- 	fightGeneration = number,
+-- 	beatIndex = number,
+-- 	beatId = string,
+-- }
 StoryContract.ServerEvents = table.freeze({
 	StoryCue = "StoryCue",
 	ObjectiveUpdate = "ObjectiveUpdate",
 	FragmentUpdate = "FragmentUpdate",
 	RoleUpdate = "RoleUpdate",
 	AdminDiagnostics = "AdminDiagnostics",
+	FightBeat = "FightBeat",
 })
 
 StoryContract.ClientEvents = table.freeze({

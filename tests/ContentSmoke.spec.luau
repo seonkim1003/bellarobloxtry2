@@ -71,7 +71,11 @@ local uiShells = {
 assert(#storyStates == 14, "expected 14 story states")
 assert(#requiredTags == 8, "expected 8 required tags")
 assert(#requiredAttributes == 6, "expected 6 required attributes")
-assert(#serverSignals == 5, "expected 5 server signals")
+assert(#serverSignals == 6, "expected 6 server signals")
+assert(
+	table.find(serverSignals, "FightBeat") ~= nil,
+	"FightBeat must be a recognized server signal"
+)
 assert(#clientRequests == 4, "expected 4 client requests")
 assert(#sceneIds == 5, "expected 5 scenes")
 assert(#uiShells == 13, "expected 13 UI shells")
