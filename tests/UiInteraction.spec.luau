@@ -4,7 +4,7 @@ local fs = require("@lune/fs")
 
 local guiSource = fs.readFile("src/client/UI/GuiShell.luau")
 local mainSource = fs.readFile("src/client/Main.client.luau")
-local bootstrapSource = fs.readFile("src/server/Bootstrap.server.luau")
+local gameplaySource = fs.readFile("src/server/Services/GameplayService.luau")
 local presenterSource = fs.readFile("src/client/Presentation/StoryPresenter.luau")
 local ContentConfig = require("../src/shared/ContentConfig")
 
@@ -13,7 +13,7 @@ for variableName in string.gmatch(guiSource, "local%s+(%w+Button)%s*=%s*createBu
 	table.insert(buttons, variableName)
 end
 
-assert(#buttons == 15, `expected 15 interactive buttons, found {#buttons}`)
+assert(#buttons == 11, `expected 11 interactive buttons, found {#buttons}`)
 for _, variableName in buttons do
 	assert(
 		string.find(guiSource, `{variableName}.Activated:Connect`, 1, true),
@@ -34,7 +34,7 @@ assert(
 )
 assert(
 	string.find(guiSource, "showRoleSelection", 1, true)
-		and string.find(guiSource, "showStageSelection", 1, true)
+		and string.find(guiSource, "roleChoiceHint", 1, true)
 		and string.find(guiSource, "UserInputService.MouseIconEnabled = true", 1, true)
 		and string.find(
 			guiSource,
@@ -42,21 +42,20 @@ assert(
 			1,
 			true
 		),
-	"Role and stage screens must unlock the pointer"
+	"Role screen must unlock the pointer and explain the in-world stage choice"
 )
 
 for _, choice in { "Maze", "Obby", "Scavenger Hunt" } do
-	assert(string.find(guiSource, `selectedStage = "{choice}"`, 1, true), `missing {choice} click`)
 	assert(
-		string.find(bootstrapSource, `stageChoice == "{choice}"`, 1, true) or choice == "Maze",
-		`missing {choice} server route`
+		string.find(gameplaySource, "ProgressionRules.startStateForStage(stage)", 1, true),
+		`missing server-authoritative teleporter route for {choice}`
 	)
 end
 assert(
 	string.find(mainSource, 'remotes:request("RoleReady", {', 1, true)
 		and string.find(mainSource, "role = roleChoice", 1, true)
-		and string.find(mainSource, "stage = stageChoice", 1, true),
-	"Start must submit both selections"
+		and not string.find(mainSource, "stage = stageChoice", 1, true),
+	"Role selection must not submit a UI-selected stage"
 )
 
 for _, state in ContentConfig.storyStates do

@@ -137,6 +137,7 @@ assert(#findTagged("NPCSpawn", "NPCType", "EvilRambo") == 1, "EvilRambo spawn mi
 assert(#findTagged("MazeExit") >= 1, "MazeExit marker missing")
 assert(#findTagged("CinematicMarker", "MarkerId", "KidnapHold") >= 1, "KidnapHold marker missing")
 assert(#findTagged("LetterFragment") == 3, "Expected exactly three server-authored fragments")
+assert(#findTagged("StageTeleporter") == 3, "Expected exactly three lobby stage teleporters")
 
 for _, point in findTagged("PatrolPoint") do
 	assert((point.attributes or {}).NPCType == "EvilRambo", "Patrol point NPCType mismatch")
@@ -160,8 +161,8 @@ assert(
 )
 assert(
 	string.find(mainSource, "role = roleChoice", 1, true)
-		and string.find(mainSource, "stage = stageChoice", 1, true),
-	"Lobby must submit the selected Bella/Admin role and gameplay stage"
+		and not string.find(mainSource, "stage = stageChoice", 1, true),
+	"Lobby UI must submit only the selected Bella/Admin role"
 )
 local presenterSource = fs.readFile("src/client/Presentation/StoryPresenter.luau")
 assert(
@@ -328,10 +329,10 @@ assert(
 )
 local bootstrapSource = fs.readFile("src/server/Bootstrap.server.luau")
 assert(
-	string.find(bootstrapSource, "ProgressionRules.parseLobbySelection(payload)", 1, true)
-		and string.find(bootstrapSource, "ProgressionRules.startStateForStage", 1, true)
-		and string.find(bootstrapSource, "story:StartFor(player, selectedState)", 1, true),
-	"Lobby stage choices must map to their authoritative starting states"
+	string.find(bootstrapSource, "ProgressionRules.parseRoleSelection(payload)", 1, true)
+		and string.find(gameplaySource, "ProgressionRules.startStateForStage(stage)", 1, true)
+		and string.find(gameplaySource, "self.storyService:StartFor(player, startState)", 1, true),
+	"Lobby teleporters must map to their authoritative starting states"
 )
 local roleServiceSource = fs.readFile("src/server/Services/RoleService.luau")
 assert(

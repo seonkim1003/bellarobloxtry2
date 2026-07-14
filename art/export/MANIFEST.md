@@ -29,8 +29,35 @@ Reviewed exports and Roblox asset IDs belong in `art/export`.
 | Title logo | `assets.images.titleLogo` | Image | `rbxassetid://0` | Replaced in the current UI by title text plus the Fat Bart model |
 | Fragment icon | `assets.images.fragmentIcon` | Image | `rbxassetid://0` | Replaced in the current UI by the Clickable Note model |
 | Credits backdrop | `assets.images.creditsBackdrop` | Image | `rbxassetid://0` | Placeholder |
-| All ambience / stings / UI / ASMR | `sounds.*` | Audio | `rbxassetid://0` | Placeholder |
+| All ambience / stings / UI / ASMR | `sounds.*` | Audio | See sound table below | Active — Roblox free catalog (ProSoundEffects / APM / engine) |
 | Kidnap / revive / corruption | `assets.animations.*` | Animation | `rbxassetid://0` | Placeholder (not sound constants) |
+
+## Runtime sounds (ContentConfig.sounds)
+
+| Role | ContentConfig key | Asset ID | Source |
+| --- | --- | --- | --- |
+| Lobby ambience | `ambienceLobby` | `9112828235` | ProSoundEffects — Marina Ambience 2 |
+| Maze ambience | `ambienceMaze` | `9119386548` | ProSoundEffects — Spacecraft Engine Idle |
+| Tower ambience | `ambienceTower` | `9112772977` | ProSoundEffects — Dock Ambience 3 |
+| Field ambience | `ambienceField` | `9112865688` | ProSoundEffects — Salton Sea 1 |
+| Epilogue ambience | `ambienceEpilogue` | `9112828235` | ProSoundEffects — Marina Ambience 2 |
+| Credits music | `musicCredits` | `131704363201949` | DistrokidOfficial — Floating |
+| Chase tension bed | `chaseTension` | `1843867314` | APMOfficial — Tension Repeat Drones 29 |
+| Chase sting | `chaseSting` | `1846435267` | APMOfficial — Dramatic Statement B |
+| Corruption sting | `corruptionSting` | `9125899104` | ProSoundEffects — Sci Fi Transformation |
+| State transition | `stateTransition` | `9113840530` | ProSoundEffects — Cloth Whoosh |
+| Fragment pickup | `fragmentPickup` | `9126076118` | ProSoundEffects — Synth Sparkle |
+| UI click / confirm | `uiClick` / `uiConfirm` | `17582213219` | Creator Store — Click Soft UI |
+| Kidnap grab | `kidnapGrab` | `9118716580` | ProSoundEffects — Rope Grab |
+| Kidnap drag | `kidnapDrag` | `9125563505` | ProSoundEffects — Floor Creak |
+| Cinematic whoosh | `cinematicWhoosh` | `9113840280` | ProSoundEffects — Cloth Whoosh |
+| Dog fight impact | `dogFightImpact` | `9113535048` | ProSoundEffects — Body Slam 2 |
+| Dog fight clash | `dogFightClash` | `9047224047` | APMOfficial — Blazing Smack Attack Hit1 |
+| Dog fight victory | `dogFightVictory` | `1841760614` | APMOfficial — Sacred Skyline sting |
+| Letter open | `letterOpen` | `9118834867` | ProSoundEffects — Scrapbook Open 5 |
+| Respawn soft | `respawnSoft` | `9113840154` | ProSoundEffects — Cloth Whoosh |
+| Teleporter activate | `teleporterActivate` | `9113840530` | ProSoundEffects — Cloth Whoosh |
+| Butter ASMR step | `obbyMaterials.Butter` | `9125563505` | ProSoundEffects — Floor Creak |
 
 **Studio requirement:** Get each free model with the Toolbox (or own the asset) for the place creator account before Play. `InsertService:LoadAsset` fails with a warn and keeps neon placeholders if an ID cannot be loaded.
 

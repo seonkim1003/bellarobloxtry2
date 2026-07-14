@@ -35,6 +35,7 @@ type CinematicInternal = {
 	_clearSubtitle: ClearSubtitle?,
 	_shakeConnection: RBXScriptConnection?,
 	_activeCleanup: (() -> ())?,
+	_audio: any,
 }
 
 local CinematicPlayer = {}
@@ -98,6 +99,7 @@ function CinematicPlayer.new(): CinematicPlayer
 		_clearSubtitle = nil :: ClearSubtitle?,
 		_shakeConnection = nil :: RBXScriptConnection?,
 		_activeCleanup = nil :: (() -> ())?,
+		_audio = nil :: any,
 	}, CinematicPlayer)
 end
 
@@ -108,6 +110,31 @@ function CinematicPlayer.bindSubtitles(
 )
 	self._subtitle = setSubtitle
 	self._clearSubtitle = clearSubtitle
+end
+
+function CinematicPlayer.bindAudio(self: CinematicPlayer, audio: any)
+	self._audio = audio
+end
+
+local function audioBegin(self: CinematicPlayer)
+	local audio = self._audio
+	if audio and audio.beginCinematic then
+		audio.beginCinematic()
+	end
+end
+
+local function audioEnd(self: CinematicPlayer)
+	local audio = self._audio
+	if audio and audio.endCinematic then
+		audio.endCinematic()
+	end
+end
+
+local function audioCue(self: CinematicPlayer, kind: string)
+	local audio = self._audio
+	if audio and audio.playCinematicCue then
+		audio.playCinematicCue(kind)
+	end
 end
 
 function CinematicPlayer._ensureFade(self: CinematicPlayer)
@@ -248,9 +275,16 @@ function CinematicPlayer.playSequence(
 	end
 
 	local generation = self:_beginPlayback()
+	audioBegin(self)
+	if sequenceName == "corruption" then
+		audioCue(self, "corruption")
+	else
+		audioCue(self, "whoosh")
+	end
 	self._activeCleanup = function()
 		self:_stopShake()
 		self:_restoreCamera()
+		audioEnd(self)
 		if self._fadeFrame then
 			self._fadeFrame.BackgroundTransparency = 1
 		end
@@ -314,6 +348,7 @@ function CinematicPlayer.playSequence(
 		end
 		self._playing = false
 		self._activeCleanup = nil
+		audioEnd(self)
 		if onComplete then
 			onComplete()
 		end
@@ -335,9 +370,11 @@ function CinematicPlayer.playKidnapCutscene(
 	end
 
 	local generation = self:_beginPlayback()
+	audioBegin(self)
 	self._activeCleanup = function()
 		kidnapStage:clear()
 		self:_restoreCamera()
+		audioEnd(self)
 		if self._fadeFrame then
 			self._fadeFrame.BackgroundTransparency = 1
 		end
@@ -377,6 +414,7 @@ function CinematicPlayer.playKidnapCutscene(
 		end
 		self._playing = false
 		self._activeCleanup = nil
+		audioEnd(self)
 		if onComplete then
 			onComplete()
 		end
@@ -400,6 +438,7 @@ function CinematicPlayer.playKidnapCutscene(
 		stopCameraFollow()
 		kidnapStage:clear()
 		self:_restoreCamera()
+		audioEnd(self)
 		if self._fadeFrame then
 			self._fadeFrame.BackgroundTransparency = 1
 		end
@@ -417,6 +456,14 @@ function CinematicPlayer.playKidnapCutscene(
 
 				cameraMarker = step.markerId
 				kidnapStage:setCurrentMarker(step.markerId)
+
+				if step.markerId == "KidnapStart" then
+					audioCue(self, "whoosh")
+				elseif step.markerId == "KidnapApproach" or step.markerId == "KidnapHold" then
+					audioCue(self, "grab")
+				elseif step.markerId == "KidnapDepart" then
+					audioCue(self, "drag")
+				end
 
 				if stepIndex == 1 then
 					self:_tweenFade(1, 0.12, generation)
@@ -509,6 +556,7 @@ function CinematicPlayer.reset(self: CinematicPlayer)
 	self:_stopShake()
 	self._playing = false
 	self:_restoreCamera()
+	audioEnd(self)
 	if self._fadeFrame then
 		self._fadeFrame.BackgroundTransparency = 1
 	end

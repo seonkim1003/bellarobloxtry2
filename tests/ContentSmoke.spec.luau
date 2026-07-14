@@ -69,8 +69,8 @@ local uiShells = {
 }
 
 assert(#storyStates == 14, "expected 14 story states")
-assert(#requiredTags == 8, "expected 8 required tags")
-assert(#requiredAttributes == 6, "expected 6 required attributes")
+assert(#requiredTags == 9, "expected 9 required tags")
+assert(#requiredAttributes == 7, "expected 7 required attributes")
 assert(#serverSignals == 6, "expected 6 server signals")
 assert(
 	table.find(serverSignals, "FightBeat") ~= nil,
@@ -136,6 +136,45 @@ assert(
 assert(
 	ContentConfig.assets.marketplace.props.fatBart == 102058945923521,
 	"Fat Bart must supply the title-side character"
+)
+
+local function assertAudible(entry: any, key: string)
+	assert(type(entry) == "table", `missing sound entry {key}`)
+	assert(type(entry.soundId) == "string" and entry.soundId ~= "", `missing soundId {key}`)
+	assert(entry.soundId ~= "rbxassetid://0", `sound {key} must not be a silent placeholder`)
+end
+
+local requiredSounds = {
+	"ambienceLobby",
+	"ambienceMaze",
+	"ambienceTower",
+	"ambienceField",
+	"ambienceEpilogue",
+	"musicCredits",
+	"chaseTension",
+	"chaseSting",
+	"corruptionSting",
+	"stateTransition",
+	"fragmentPickup",
+	"uiClick",
+	"uiConfirm",
+	"kidnapGrab",
+	"kidnapDrag",
+	"cinematicWhoosh",
+	"dogFightImpact",
+	"dogFightClash",
+	"dogFightVictory",
+	"letterOpen",
+	"respawnSoft",
+	"teleporterActivate",
+}
+for _, key in requiredSounds do
+	assertAudible(ContentConfig.sounds[key], key)
+end
+assert(#ContentConfig.sounds.asmrSteps == ContentConfig.towerStepCount, "ASMR catalog length")
+assert(
+	ContentConfig.sounds.obbyMaterials[2].soundId == "rbxassetid://9125563505",
+	"Butter ASMR should use licensed floor creak"
 )
 
 print("content smoke test passed")

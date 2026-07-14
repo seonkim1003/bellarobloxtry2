@@ -61,6 +61,7 @@ StoryContract.Tags = table.freeze({
 	LetterFragment = "LetterFragment",
 	ASMRStep = "ASMRStep",
 	CinematicMarker = "CinematicMarker",
+	StageTeleporter = "StageTeleporter",
 })
 
 StoryContract.Attributes = table.freeze({
@@ -70,6 +71,7 @@ StoryContract.Attributes = table.freeze({
 	FragmentId = "FragmentId",
 	SoundId = "SoundId",
 	SequenceIndex = "SequenceIndex",
+	Stage = "Stage",
 })
 
 StoryContract.Cues = table.freeze({

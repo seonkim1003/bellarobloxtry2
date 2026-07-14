@@ -83,7 +83,85 @@ function GameplayService.new(
 		mazeExitPollElapsed = 0,
 		storyPrompts = {} :: { [Instance]: ProximityPrompt },
 		towerStepBound = {} :: { [Instance]: boolean },
+		stageTeleporterBound = {} :: { [Instance]: boolean },
 	}, GameplayService)
+end
+
+local function addTeleporterLabel(part: BasePart, stage: string)
+	if part:FindFirstChild("StageLabel") then
+		return
+	end
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "StageLabel"
+	billboard.AlwaysOnTop = true
+	billboard.Size = UDim2.fromOffset(220, 54)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+	billboard.Adornee = part
+	billboard.Parent = part
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Text"
+	label.BackgroundColor3 = Color3.fromRGB(12, 14, 24)
+	label.BackgroundTransparency = 0.15
+	label.BorderSizePixel = 0
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBold
+	label.Text = stage
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextScaled = true
+	label.Parent = billboard
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = label
+end
+
+function GameplayService._bindStageTeleporter(self: any, instance: Instance)
+	if self.stageTeleporterBound[instance] or not instance:IsA("BasePart") then
+		return
+	end
+	local stage = instance:GetAttribute(Contract.Attributes.Stage)
+	if typeof(stage) ~= "string" or not ProgressionRules.startStateForStage(stage) then
+		warn(`Ignoring stage teleporter with invalid Stage attribute: {instance:GetFullName()}`)
+		return
+	end
+	self.stageTeleporterBound[instance] = true
+	addTeleporterLabel(instance, stage)
+
+	instance.Touched:Connect(function(hit)
+		if not self.validator.IsStoryState(self.storyService, Contract.States.RoleLobby) then
+			return
+		end
+		local character = hit:FindFirstAncestorOfClass("Model")
+		local player = character and Players:GetPlayerFromCharacter(character)
+		if
+			not player
+			or player.Character ~= character
+			or not self:_isProtagonist(player)
+			or not self.roleService:IsReady(player)
+			or not self.validator.IsNear(
+				player,
+				instance,
+				Config.Validation.StageTeleporterInteractionDistance
+			)
+		then
+			return
+		end
+		if
+			not self.validator:AllowRate(
+				player,
+				"StageTeleporter",
+				Config.Validation.StageTeleporterBurstLimit,
+				Config.Validation.RemoteWindowSeconds
+			)
+		then
+			return
+		end
+		local startState = ProgressionRules.startStateForStage(stage)
+		if startState then
+			self.storyService:StartFor(player, startState)
+		end
+	end)
 end
 
 function GameplayService._bindTowerStep(self: any, instance: Instance)
@@ -551,6 +629,9 @@ function GameplayService._resetRun(self: any)
 end
 
 function GameplayService.Start(self: any)
+	for _, instance in CollectionService:GetTagged(Contract.Tags.StageTeleporter) do
+		self:_bindStageTeleporter(instance)
+	end
 	for _, instance in CollectionService:GetTagged(Contract.Tags.MazeExit) do
 		self:_bindMazeExit(instance)
 	end
@@ -576,6 +657,10 @@ function GameplayService.Start(self: any)
 	CollectionService:GetInstanceAddedSignal(Contract.Tags.ASMRStep):Connect(function(instance)
 		self:_bindTowerStep(instance)
 	end)
+	CollectionService:GetInstanceAddedSignal(Contract.Tags.StageTeleporter)
+		:Connect(function(instance)
+			self:_bindStageTeleporter(instance)
+		end)
 	RunService.Heartbeat:Connect(function(dt)
 		self:_pollMazeExit(dt)
 	end)

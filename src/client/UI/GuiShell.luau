@@ -17,6 +17,8 @@ local SessionPreferences =
 	require(script.Parent.Parent:WaitForChild("Controls"):WaitForChild("SessionPreferences"))
 local ActionBindings =
 	require(script.Parent.Parent:WaitForChild("Controls"):WaitForChild("ActionBindings"))
+local ContentAudio =
+	require(script.Parent.Parent:WaitForChild("Audio"):WaitForChild("ContentAudio"))
 
 export type GuiShellApi = {
 	setObjective: (text: string) -> (),
@@ -35,7 +37,7 @@ export type GuiShellApi = {
 	showAdminDiagnostics: (visible: boolean, text: string?) -> (),
 	setCursorEnabled: (enabled: boolean) -> (),
 	setReducedMotionEnabled: (enabled: boolean) -> (),
-	setReadyHandler: (handler: ((roleChoice: string, stageChoice: string) -> ())?) -> (),
+	setRoleChoiceHandler: (handler: ((roleChoice: string) -> ())?) -> (),
 	setCursorHandler: (handler: (() -> ())?) -> (),
 	setReducedMotionHandler: (handler: (() -> ())?) -> (),
 	setReviveHandler: (handler: ((accepted: boolean) -> ())?) -> (),
@@ -241,51 +243,18 @@ function GuiShell.mount(): GuiShellApi
 		UDim2.fromScale(0.52, 0.43),
 		UDim2.fromScale(0.18, 0.09)
 	)
-	local stageChoicePrompt = createTextLabel(titleFrame, "StageChoicePrompt", {
-		Text = "Choose stage:",
-		Position = UDim2.fromScale(0.12, 0.55),
-		Size = UDim2.fromScale(0.22, 0.045),
+	local roleChoiceHint = createTextLabel(titleFrame, "RoleChoiceHint", {
+		Text = "After choosing Bella, walk onto one of the three teleporters in the lobby.",
+		Position = UDim2.fromScale(0.2, 0.57),
+		Size = UDim2.fromScale(0.6, 0.08),
+		TextColor3 = Color3.fromRGB(200, 205, 220),
 	})
-	local mazeButton = createButton(
-		titleFrame,
-		"ChooseMaze",
-		"Maze",
-		UDim2.fromScale(0.34, 0.545),
-		UDim2.fromScale(0.16, 0.055)
-	)
-	local obbyButton = createButton(
-		titleFrame,
-		"ChooseObby",
-		"Obby",
-		UDim2.fromScale(0.51, 0.545),
-		UDim2.fromScale(0.16, 0.055)
-	)
-	local scavengerButton = createButton(
-		titleFrame,
-		"ChooseScavengerHunt",
-		"Scavenger Hunt",
-		UDim2.fromScale(0.68, 0.545),
-		UDim2.fromScale(0.2, 0.055)
-	)
-	local readyStatus = createTextLabel(titleFrame, "ReadyStatus", {
-		Text = ContentConfig.ui.readyIdle,
-		Position = UDim2.fromScale(0.2, 0.63),
-		Size = UDim2.fromScale(0.6, 0.05),
-		TextColor3 = Color3.fromRGB(200, 200, 120),
-	})
-	local readyButton = createButton(
-		titleFrame,
-		"Ready",
-		"Start",
-		UDim2.fromScale(0.3, 0.69),
-		UDim2.fromScale(0.4, 0.09)
-	)
 
 	local reducedMotionButton = createButton(
 		titleFrame,
 		"ReducedMotion",
 		ContentConfig.ui.reducedMotionOff,
-		UDim2.fromScale(0.25, 0.82),
+		UDim2.fromScale(0.25, 0.72),
 		UDim2.fromScale(0.5, 0.07)
 	)
 	reducedMotionButton.TextScaled = false
@@ -294,10 +263,6 @@ function GuiShell.mount(): GuiShellApi
 	local lobbyButtons: { TextButton } = {
 		bellaButton,
 		adminButton,
-		mazeButton,
-		obbyButton,
-		scavengerButton,
-		readyButton,
 		reducedMotionButton,
 	}
 	for _, button in lobbyButtons do
@@ -306,8 +271,7 @@ function GuiShell.mount(): GuiShellApi
 		button.ZIndex = 12
 	end
 	roleChoicePrompt.ZIndex = 11
-	stageChoicePrompt.ZIndex = 11
-	readyStatus.ZIndex = 11
+	roleChoiceHint.ZIndex = 11
 
 	-- In-game mouse unlock. Keyboard/mouse players can use Tab, controller players
 	-- can use Y, and touch/controller users can activate this selectable button.
@@ -506,8 +470,9 @@ function GuiShell.mount(): GuiShellApi
 	leaveNoButton.ZIndex = 6
 
 	-- Selection graph (controller)
-	readyButton.NextSelectionDown = reducedMotionButton
-	reducedMotionButton.NextSelectionUp = readyButton
+	bellaButton.NextSelectionDown = reducedMotionButton
+	adminButton.NextSelectionDown = reducedMotionButton
+	reducedMotionButton.NextSelectionUp = bellaButton
 	acceptButton.NextSelectionRight = refuseButton
 	refuseButton.NextSelectionLeft = acceptButton
 	replayButton.NextSelectionRight = leaveButton
@@ -517,7 +482,7 @@ function GuiShell.mount(): GuiShellApi
 	cursorButton.NextSelectionLeft = settingsButton
 	settingsButton.NextSelectionRight = cursorButton
 
-	local readyHandler: ((string, string) -> ())? = nil
+	local roleChoiceHandler: ((string) -> ())? = nil
 	local cursorHandler: (() -> ())? = nil
 	local reducedMotionHandler: (() -> ())? = nil
 	local reviveHandler: ((boolean) -> ())? = nil
@@ -530,40 +495,17 @@ function GuiShell.mount(): GuiShellApi
 	local creditsVisible = false
 	local leaveConfirmVisible = false
 	local selectedRole = ""
-	local selectedStage = "Maze"
 
 	local function showRoleSelection()
 		UserInputService.MouseIconEnabled = true
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 		selectedRole = ""
 		roleChoicePrompt.Visible = true
+		roleChoiceHint.Visible = true
 		bellaButton.Visible = true
 		adminButton.Visible = true
-		stageChoicePrompt.Visible = false
-		mazeButton.Visible = false
-		obbyButton.Visible = false
-		scavengerButton.Visible = false
-		readyStatus.Visible = false
-		readyButton.Visible = false
-		reducedMotionButton.Visible = false
-		ActionBindings.focus(bellaButton)
-	end
-
-	local function showStageSelection(roleChoice: string)
-		UserInputService.MouseIconEnabled = true
-		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-		selectedRole = roleChoice
-		roleChoicePrompt.Visible = false
-		bellaButton.Visible = false
-		adminButton.Visible = false
-		stageChoicePrompt.Visible = true
-		mazeButton.Visible = true
-		obbyButton.Visible = true
-		scavengerButton.Visible = true
-		readyStatus.Visible = true
-		readyButton.Visible = true
 		reducedMotionButton.Visible = true
-		ActionBindings.focus(mazeButton)
+		ActionBindings.focus(bellaButton)
 	end
 
 	local function updateLobbyChoices()
@@ -573,16 +515,6 @@ function GuiShell.mount(): GuiShellApi
 		adminButton.BackgroundColor3 = if selectedRole == "Admin"
 			then Color3.fromRGB(105, 75, 65)
 			else Color3.fromRGB(35, 35, 48)
-		local stageButtons: { [string]: TextButton } = {
-			Maze = mazeButton,
-			Obby = obbyButton,
-			["Scavenger Hunt"] = scavengerButton,
-		}
-		for stageName, button in stageButtons do
-			button.BackgroundColor3 = if selectedStage == stageName
-				then Color3.fromRGB(60, 75, 115)
-				else Color3.fromRGB(35, 35, 48)
-		end
 	end
 
 	local function updateMotionButtonLabels()
@@ -625,43 +557,26 @@ function GuiShell.mount(): GuiShellApi
 		end
 	end
 
-	local function invokeReady()
-		if selectedRole == "" then
-			return
+	local function invokeRoleChoice()
+		if selectedRole ~= "" and roleChoiceHandler then
+			roleChoiceHandler(selectedRole)
 		end
-		if readyHandler then
-			readyHandler(selectedRole, selectedStage)
-		end
-		readyStatus.Text = ContentConfig.ui.readyAccepted
-		readyStatus.TextColor3 = Color3.fromRGB(140, 220, 150)
-		readyButton.BackgroundColor3 = Color3.fromRGB(40, 90, 55)
 	end
 
 	bellaButton.Activated:Connect(function()
-		showStageSelection("Bella")
+		ContentAudio.playUiClick()
+		selectedRole = "Bella"
 		updateLobbyChoices()
+		invokeRoleChoice()
 	end)
 	adminButton.Activated:Connect(function()
-		showStageSelection("Admin")
+		ContentAudio.playUiClick()
+		selectedRole = "Admin"
 		updateLobbyChoices()
-	end)
-	mazeButton.Activated:Connect(function()
-		selectedStage = "Maze"
-		updateLobbyChoices()
-	end)
-	obbyButton.Activated:Connect(function()
-		selectedStage = "Obby"
-		updateLobbyChoices()
-	end)
-	scavengerButton.Activated:Connect(function()
-		selectedStage = "Scavenger Hunt"
-		updateLobbyChoices()
-	end)
-
-	readyButton.Activated:Connect(function()
-		invokeReady()
+		invokeRoleChoice()
 	end)
 	cursorButton.Activated:Connect(function()
+		ContentAudio.playUiClick()
 		if cursorHandler then
 			cursorHandler()
 		end
@@ -682,9 +597,11 @@ function GuiShell.mount(): GuiShellApi
 		end
 	end)
 	leaveButton.Activated:Connect(function()
+		ContentAudio.playUiClick()
 		showLeaveConfirm(true)
 	end)
 	leaveYesButton.Activated:Connect(function()
+		ContentAudio.playUiConfirm()
 		showLeaveConfirm(false)
 		if leaveConfirmHandler then
 			leaveConfirmHandler(true)
@@ -693,22 +610,25 @@ function GuiShell.mount(): GuiShellApi
 		end
 	end)
 	leaveNoButton.Activated:Connect(function()
+		ContentAudio.playUiClick()
 		showLeaveConfirm(false)
 		if leaveConfirmHandler then
 			leaveConfirmHandler(false)
 		end
 	end)
 	reducedMotionButton.Activated:Connect(function()
+		ContentAudio.playUiClick()
 		toggleReducedMotion()
 	end)
 	settingsButton.Activated:Connect(function()
+		ContentAudio.playUiClick()
 		toggleReducedMotion()
 	end)
 
 	ActionBindings.setHandlers({
 		ready = function()
 			if titleVisible then
-				invokeReady()
+				invokeRoleChoice()
 			end
 		end,
 		reviveAccept = function()
@@ -751,7 +671,7 @@ function GuiShell.mount(): GuiShellApi
 	updateLobbyChoices()
 	updateMotionButtonLabels()
 	syncBindings()
-	ActionBindings.focus(readyButton)
+	ActionBindings.focus(bellaButton)
 
 	SessionPreferences.onChanged(function()
 		updateMotionButtonLabels()
@@ -793,13 +713,10 @@ function GuiShell.mount(): GuiShellApi
 			lobbyHint.Text = `{hint}\n{ContentConfig.ui.lobbyCapacityHint}`
 		end,
 		setReadyAccepted = function(accepted: boolean)
-			if accepted then
-				readyStatus.Text = ContentConfig.ui.readyAccepted
-				readyStatus.TextColor3 = Color3.fromRGB(140, 220, 150)
-			else
-				readyStatus.Text = ContentConfig.ui.readyIdle
-				readyStatus.TextColor3 = Color3.fromRGB(200, 200, 120)
-				readyButton.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+			-- Compatibility API retained for callers that reset the lobby presentation.
+			if not accepted then
+				selectedRole = ""
+				updateLobbyChoices()
 			end
 		end,
 		setTowerProgress = function(step: number, totalSteps: number)
@@ -893,8 +810,8 @@ function GuiShell.mount(): GuiShellApi
 			SessionPreferences.setReducedMotion(enabled)
 			updateMotionButtonLabels()
 		end,
-		setReadyHandler = function(handler: ((string, string) -> ())?)
-			readyHandler = handler
+		setRoleChoiceHandler = function(handler: ((string) -> ())?)
+			roleChoiceHandler = handler
 		end,
 		setCursorHandler = function(handler: (() -> ())?)
 			cursorHandler = handler

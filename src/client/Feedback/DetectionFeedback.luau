@@ -114,6 +114,7 @@ end
 
 function DetectionFeedback.flashDetected()
 	ContentAudio.playChaseSting()
+	ContentAudio.setChaseTension(true)
 	local frame = ensureVignette()
 	setStatus("⚠ DETECTED — move", Color3.fromRGB(255, 200, 90))
 	playFade(frame, 0.7, 1, 0.7)
@@ -124,10 +125,12 @@ function DetectionFeedback.showChase(active: boolean)
 	if active then
 		setStatus("‼ CHASE — run", Color3.fromRGB(255, 120, 120))
 		ContentAudio.playChaseSting()
+		ContentAudio.setChaseTension(true)
 		local target = if SessionPreferences.shouldSkipMotionEffects() then 0.9 else 0.78
 		playFade(frame, frame.BackgroundTransparency, target, 0.35)
 	else
 		setStatus("● Clear", Color3.fromRGB(160, 220, 160))
+		ContentAudio.setChaseTension(false)
 		playFade(frame, frame.BackgroundTransparency, 1, 0.35)
 		task.delay(1.2, function()
 			setStatus("", Color3.fromRGB(255, 255, 255))
@@ -137,6 +140,7 @@ end
 
 function DetectionFeedback.reset()
 	cancelTween()
+	ContentAudio.setChaseTension(false)
 	if vignette then
 		vignette.BackgroundTransparency = 1
 	end

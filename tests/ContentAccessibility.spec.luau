@@ -91,8 +91,8 @@ local mainSource = fs.readFile("src/client/Main.client.luau")
 assert(
 	not string.find(guiSource, '"Brand"', 1, true)
 		and string.find(guiSource, "showRoleSelection", 1, true)
-		and string.find(guiSource, "showStageSelection", 1, true),
-	"Lobby must show role selection first without the title screen overlapping it"
+		and string.find(guiSource, "roleChoiceHint", 1, true),
+	"Lobby must show role selection and explain the in-world teleporters"
 )
 assert(
 	string.find(guiSource, "button.Active = true", 1, true)
@@ -117,9 +117,7 @@ for _, needle in
 		"CursorToggle",
 		"ChooseBella",
 		"ChooseAdmin",
-		"ChooseMaze",
-		"ChooseObby",
-		"ChooseScavengerHunt",
+		"RoleChoiceHint",
 	}
 do
 	assert(string.find(guiSource, needle, 1, true), `GuiShell missing {needle}`)

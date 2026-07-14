@@ -108,12 +108,8 @@ dogFight:ObserveCompleted(function(storyRevision, fightGeneration)
 	end
 end)
 
-roles:ObserveRoleChanged(function(player, role, previousRole)
-	if role == Contract.Roles.Protagonist then
-		if RuntimeRules.canStartStory(role, roles:IsReady(player), story:GetState()) then
-			story:StartFor(player)
-		end
-	elseif previousRole == Contract.Roles.Protagonist then
+roles:ObserveRoleChanged(function(_player, role, previousRole)
+	if role ~= Contract.Roles.Protagonist and previousRole == Contract.Roles.Protagonist then
 		story:ResetToLobby("ProtagonistLeft")
 	end
 end)
@@ -122,8 +118,8 @@ remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player, 
 	if not validator:AllowAction(player, Contract.ClientEvents.RoleReady) then
 		return
 	end
-	local roleChoice, stageChoice = ProgressionRules.parseLobbySelection(payload)
-	if not roleChoice or not stageChoice then
+	local roleChoice = ProgressionRules.parseRoleSelection(payload)
+	if not roleChoice then
 		return
 	end
 	if roleChoice == "Admin" then
@@ -135,30 +131,11 @@ remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player, 
 	if roleChoice ~= "Bella" or not roles:ClaimProtagonist(player) then
 		return
 	end
-	local selectedState = ProgressionRules.startStateForStage(stageChoice)
-	if not selectedState then
-		return
-	end
-	if
-		(stageChoice == "Obby" and selectedState ~= Contract.States.TowerClimb)
-		or (stageChoice == "Scavenger Hunt" and selectedState ~= Contract.States.FieldHunt)
-	then
-		return
-	end
-	local markedReady = roles:MarkReady(player)
-	local startedStory = false
-	if
-		markedReady
-		and RuntimeRules.canStartStory(
-			roles:GetRole(player),
-			roles:IsReady(player),
-			story:GetState()
-		)
-	then
-		startedStory = story:StartFor(player, selectedState)
-	end
-	if not startedStory then
-		story:SendSnapshot(player)
+	if roles:MarkReady(player) then
+		remotes[Contract.ServerEvents.ObjectiveUpdate]:FireClient(player, {
+			state = Contract.States.RoleLobby,
+			objective = "Walk onto the Maze, Obby, or Scavenger Hunt teleporter",
+		})
 	end
 end)
 

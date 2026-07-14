@@ -2,23 +2,21 @@
 
 local ProgressionRules = require("../src/shared/ProgressionRules")
 
-local role, stage = ProgressionRules.parseLobbySelection({ role = "Bella", stage = "Maze" })
-assert(role == "Bella" and stage == "Maze", "valid lobby selection")
-local adminRole, adminStage =
-	ProgressionRules.parseLobbySelection({ role = "Admin", stage = "Obby" })
-assert(adminRole == "Admin" and adminStage == "Obby", "valid admin selection is recognized")
+assert(ProgressionRules.parseRoleSelection({ role = "Bella" }) == "Bella", "valid Bella role")
+assert(ProgressionRules.parseRoleSelection({ role = "Admin" }) == "Admin", "valid admin role")
 
 local function assertInvalid(payload: any)
-	local invalidRole, invalidStage = ProgressionRules.parseLobbySelection(payload)
-	assert(invalidRole == nil and invalidStage == nil, "malformed lobby payload fails closed")
+	assert(
+		ProgressionRules.parseRoleSelection(payload) == nil,
+		"malformed lobby payload fails closed"
+	)
 end
 assertInvalid(nil)
 assertInvalid({})
-assertInvalid({ role = "Bella" })
 assertInvalid({ stage = "Maze" })
 assertInvalid({ role = "Observer", stage = "Maze" })
-assertInvalid({ role = "Bella", stage = "Credits" })
-assertInvalid({ role = "Bella", stage = "Maze", extra = true })
+assertInvalid({ role = "Bella", stage = "Maze" })
+assertInvalid({ role = "Bella", extra = true })
 
 assert(ProgressionRules.startStateForStage("Maze") == "MazeIntro", "maze start")
 assert(ProgressionRules.startStateForStage("Obby") == "TowerClimb", "tower start")

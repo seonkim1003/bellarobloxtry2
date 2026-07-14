@@ -15,24 +15,20 @@ local stageStates: { [string]: string } = {
 	["Scavenger Hunt"] = "FieldHunt",
 }
 
-function ProgressionRules.parseLobbySelection(payload: any): (string?, string?)
+function ProgressionRules.parseRoleSelection(payload: any): string?
 	if typeof(payload) ~= "table" then
-		return nil, nil
+		return nil
 	end
 	for key in payload do
-		if key ~= "role" and key ~= "stage" then
-			return nil, nil
+		if key ~= "role" then
+			return nil
 		end
 	end
 	local role = payload.role
-	local stage = payload.stage
 	if typeof(role) ~= "string" or not validRoles[role] then
-		return nil, nil
+		return nil
 	end
-	if typeof(stage) ~= "string" or stageStates[stage] == nil then
-		return nil, nil
-	end
-	return role, stage
+	return role
 end
 
 function ProgressionRules.startStateForStage(stage: string): string?

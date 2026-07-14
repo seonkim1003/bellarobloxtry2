@@ -13,6 +13,8 @@ local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChi
 local ContentConfig = SharedAccess.requireContentConfig()
 local SessionPreferences =
 	require(script.Parent.Parent:WaitForChild("Controls"):WaitForChild("SessionPreferences"))
+local ContentAudio =
+	require(script.Parent.Parent:WaitForChild("Audio"):WaitForChild("ContentAudio"))
 
 local LetterPanel = {}
 
@@ -112,6 +114,7 @@ function LetterPanel.show(includeTwist: boolean)
 	local _ = includeTwist
 	body.Text = table.concat(ContentConfig.finalLetterText.body, "\n")
 	gui.Enabled = true
+	ContentAudio.playLetterOpen()
 
 	cancelTween()
 	local guiInset = GuiService:GetGuiInset()

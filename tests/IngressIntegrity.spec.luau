@@ -8,8 +8,8 @@ local story = fs.readFile("src/server/Services/StoryService.luau")
 local runtime = fs.readFile("src/shared/RuntimeRules.luau")
 
 assert(
-	string.find(bootstrap, "ProgressionRules.parseLobbySelection(payload)", 1, true),
-	"role/stage ingress must use strict pure validation"
+	string.find(bootstrap, "ProgressionRules.parseRoleSelection(payload)", 1, true),
+	"role ingress must use strict pure validation"
 )
 assert(
 	string.find(
@@ -46,6 +46,14 @@ assert(
 	string.find(gameplay, "ProgressionRules.canCollectTowerStep", 1, true)
 		and string.find(gameplay, 'AllowRate(player, "TowerStep"', 1, true),
 	"tower progression must be sequential and rate-limited"
+)
+assert(
+	string.find(gameplay, "function GameplayService._bindStageTeleporter", 1, true)
+		and string.find(gameplay, "Contract.Tags.StageTeleporter", 1, true)
+		and string.find(gameplay, "AllowRate(", 1, true)
+		and string.find(gameplay, "self.validator.IsNear", 1, true)
+		and string.find(gameplay, "self.storyService:StartFor(player, startState)", 1, true),
+	"stage teleporters must be server-bound, proximity-validated, rate-limited, and authoritative"
 )
 assert(
 	string.find(gameplay, "serverAuthoredFragmentIds", 1, true)

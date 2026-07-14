@@ -130,6 +130,9 @@ function DogFightPresenter._finishOnce(self: DogFightPresenter, generation: numb
 	self._playing = false
 	self:_stopCamera()
 	self._puppet:clear()
+	if self._audio and self._audio.endCinematic then
+		self._audio.endCinematic()
+	end
 	if self._clearSubtitle then
 		self._clearSubtitle()
 	end
@@ -157,6 +160,9 @@ function DogFightPresenter._playBeat(
 
 	self:_hardCut(beat.cameraMarkerId, beat.beatId)
 	self._puppet:beginBeat(beat.beatId, beat.durationSeconds, reducedMotion)
+	if self._audio and self._audio.playDogFightBeat then
+		self._audio.playDogFightBeat(beat.beatId)
+	end
 
 	local speaker, text = findDialogue(beat.subtitleId)
 	if text and self._subtitle then
@@ -184,11 +190,17 @@ function DogFightPresenter.play(
 	self._activeCleanup = function()
 		self:_stopCamera()
 		self._puppet:clear()
+		if self._audio and self._audio.endCinematic then
+			self._audio.endCinematic()
+		end
 		if self._clearSubtitle then
 			self._clearSubtitle()
 		end
 	end
 
+	if self._audio and self._audio.beginCinematic then
+		self._audio.beginCinematic()
+	end
 	if self._audio and self._audio.playDogFightImpact then
 		self._audio.playDogFightImpact()
 	end

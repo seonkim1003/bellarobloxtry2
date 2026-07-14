@@ -97,8 +97,9 @@ local obbyMaterials = {
 	{
 		name = "Butter",
 		assetId = 135865294874666,
-		soundId = "rbxasset://sounds/action_footsteps_wood.mp3",
-		playbackSpeed = 0.62,
+		-- Pro Sound Effects floor creak (licensed Creator Store)
+		soundId = "rbxassetid://9125563505",
+		playbackSpeed = 0.95,
 	},
 	{
 		name = "PopIt",
@@ -124,6 +125,28 @@ local placeholderObjects: { PlaceholderObject } = {
 		name = "LobbyReadyTrigger",
 		tag = "StoryTrigger",
 		attributes = { SceneId = "Lobby", MarkerId = "RoleReadyZone" },
+	},
+	{
+		sceneId = "Lobby",
+		name = "MazeTeleporter",
+		tag = "StageTeleporter",
+		attributes = { SceneId = "Lobby", MarkerId = "MazeTeleporter", Stage = "Maze" },
+	},
+	{
+		sceneId = "Lobby",
+		name = "ObbyTeleporter",
+		tag = "StageTeleporter",
+		attributes = { SceneId = "Lobby", MarkerId = "ObbyTeleporter", Stage = "Obby" },
+	},
+	{
+		sceneId = "Lobby",
+		name = "ScavengerTeleporter",
+		tag = "StageTeleporter",
+		attributes = {
+			SceneId = "Lobby",
+			MarkerId = "ScavengerTeleporter",
+			Stage = "Scavenger Hunt",
+		},
 	},
 	{
 		sceneId = "Maze",
@@ -417,6 +440,7 @@ local ContentConfig = {
 		"LetterFragment",
 		"ASMRStep",
 		"CinematicMarker",
+		"StageTeleporter",
 	},
 
 	requiredAttributes = {
@@ -426,6 +450,7 @@ local ContentConfig = {
 		"FragmentId",
 		"SoundId",
 		"SequenceIndex",
+		"Stage",
 	},
 
 	sceneIds = {
@@ -549,14 +574,29 @@ local ContentConfig = {
 	},
 
 	sounds = {
-		ambienceLobby = { soundId = PLACEHOLDER_SOUND, volume = 0.35, looped = true },
-		ambienceMaze = { soundId = PLACEHOLDER_SOUND, volume = 0.4, looped = true },
-		ambienceTower = { soundId = PLACEHOLDER_SOUND, volume = 0.3, looped = true },
-		ambienceField = { soundId = PLACEHOLDER_SOUND, volume = 0.45, looped = true },
-		chaseSting = { soundId = PLACEHOLDER_SOUND, volume = 0.7, looped = false },
-		fragmentPickup = { soundId = PLACEHOLDER_SOUND, volume = 0.6, looped = false },
-		uiClick = { soundId = PLACEHOLDER_SOUND, volume = 0.5, looped = false },
-		dogFightImpact = { soundId = PLACEHOLDER_SOUND, volume = 0.55, looped = false },
+		-- Licensed free audio: Pro Sound Effects + APM Official (+ soft UI click).
+		ambienceLobby = { soundId = "rbxassetid://9112828235", volume = 0.32, looped = true }, -- Marina Ambience 2
+		ambienceMaze = { soundId = "rbxassetid://9119386548", volume = 0.38, looped = true }, -- Spacecraft Engine Idle
+		ambienceTower = { soundId = "rbxassetid://9112772977", volume = 0.28, looped = true }, -- Dock Ambience (creaks)
+		ambienceField = { soundId = "rbxassetid://9112865688", volume = 0.4, looped = true }, -- Salton Sea 1
+		ambienceEpilogue = { soundId = "rbxassetid://9112828235", volume = 0.28, looped = true }, -- Marina (softer)
+		musicCredits = { soundId = "rbxassetid://131704363201949", volume = 0.35, looped = true }, -- Floating (Distrokid)
+		chaseTension = { soundId = "rbxassetid://1843867314", volume = 0.42, looped = true }, -- Tension Repeat Drones 29
+		chaseSting = { soundId = "rbxassetid://1846435267", volume = 0.72, looped = false }, -- Dramatic Statement B
+		corruptionSting = { soundId = "rbxassetid://9125899104", volume = 0.65, looped = false }, -- Sci Fi Transformation
+		stateTransition = { soundId = "rbxassetid://9113840530", volume = 0.45, looped = false }, -- Cloth Whoosh
+		fragmentPickup = { soundId = "rbxassetid://9126076118", volume = 0.55, looped = false }, -- Synth Sparkle
+		uiClick = { soundId = "rbxassetid://17582213219", volume = 0.45, looped = false }, -- Click Soft UI
+		uiConfirm = { soundId = "rbxassetid://17582213219", volume = 0.6, looped = false },
+		kidnapGrab = { soundId = "rbxassetid://9118716580", volume = 0.6, looped = false }, -- Rope Grab
+		kidnapDrag = { soundId = "rbxassetid://9125563505", volume = 0.5, looped = false }, -- Floor Creak
+		cinematicWhoosh = { soundId = "rbxassetid://9113840280", volume = 0.5, looped = false }, -- Cloth Whoosh
+		dogFightImpact = { soundId = "rbxassetid://9113535048", volume = 0.58, looped = false }, -- Body Slam
+		dogFightClash = { soundId = "rbxassetid://9047224047", volume = 0.6, looped = false }, -- Blazing Smack Hit1
+		dogFightVictory = { soundId = "rbxassetid://1841760614", volume = 0.65, looped = false }, -- Sacred Skyline sting
+		letterOpen = { soundId = "rbxassetid://9118834867", volume = 0.55, looped = false }, -- Scrapbook Open
+		respawnSoft = { soundId = "rbxassetid://9113840154", volume = 0.4, looped = false }, -- Cloth Whoosh
+		teleporterActivate = { soundId = "rbxassetid://9113840530", volume = 0.5, looped = false }, -- Cloth Whoosh
 		asmrSteps = asmrStepSounds,
 		obbyMaterials = obbyMaterials,
 	},
@@ -745,7 +785,7 @@ local ContentConfig = {
 	},
 
 	ui = {
-		titlePrompt = "Press Ready when your role is set",
+		titlePrompt = "Choose Bella, then walk onto a stage teleporter",
 		objectiveFallback = "Awaiting objective…",
 		fragmentLabel = "Letter pieces",
 		reviveAccept = "Get up",
@@ -761,7 +801,7 @@ local ContentConfig = {
 		reducedMotionOff = "Reduced motion: Off  [M / D-Pad ↓]",
 		reducedMotionOn = "Reduced motion: On  [M / D-Pad ↓]",
 		lobbyCapacityHint = "Two players max — one protagonist, one observer (or waiting).",
-		lobbyProtagonistHint = "You are the protagonist. Press Ready when both seats are set.",
+		lobbyProtagonistHint = "You are Bella. Walk onto a lobby teleporter to choose a stage.",
 		lobbyObserverHint = "You are observing. Follow along — Ready confirms you are present.",
 		lobbyWaitingHint = "Waiting for role assignment. A second player can join as observer.",
 		towerProgressLabel = "Tower steps",

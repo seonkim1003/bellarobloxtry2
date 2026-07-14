@@ -11,6 +11,8 @@ return table.freeze({
 	Validation = table.freeze({
 		DefaultInteractionDistance = 14,
 		MazeExitInteractionDistance = 22,
+		StageTeleporterInteractionDistance = 10,
+		StageTeleporterBurstLimit = 4,
 		RemoteBurstLimit = 8,
 		RemoteWindowSeconds = 2,
 		CinematicBurstLimit = 2,

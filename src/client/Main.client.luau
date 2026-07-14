@@ -24,6 +24,8 @@ local SessionPreferences =
 	require(clientRoot:WaitForChild("Controls"):WaitForChild("SessionPreferences"))
 local ContentAudio = require(clientRoot:WaitForChild("Audio"):WaitForChild("ContentAudio"))
 local ASMRStepListener = require(clientRoot:WaitForChild("Audio"):WaitForChild("ASMRStepListener"))
+local StageTeleporterListener =
+	require(clientRoot:WaitForChild("Audio"):WaitForChild("StageTeleporterListener"))
 local CinematicPlayer =
 	require(clientRoot:WaitForChild("Cinematics"):WaitForChild("CinematicPlayer"))
 local RobberPresentation =
@@ -56,6 +58,7 @@ sprint:enable()
 local asmr = ASMRStepListener.new(ContentConfig.controls.asmrDebounceSeconds)
 local cinematics = CinematicPlayer.new()
 cinematics:bindSubtitles(gui.setSubtitle, gui.clearSubtitle)
+cinematics:bindAudio(ContentAudio)
 local kidnapStage = KidnapStage.new()
 local dogFight = DogFightPresenter.new(cinematics, ContentAudio)
 dogFight:bindSubtitles(gui.setSubtitle, gui.clearSubtitle)
@@ -97,12 +100,10 @@ end)
 -- Honor session preference default from ContentConfig.
 SessionPreferences.setReducedMotion(ContentConfig.accessibility.reducedMotionDefault == true)
 
-gui.setReadyHandler(function(roleChoice: string, stageChoice: string)
-	ContentAudio.playUiClick()
-	gui.setReadyAccepted(true)
+gui.setRoleChoiceHandler(function(roleChoice: string)
+	ContentAudio.playUiConfirm()
 	remotes:request("RoleReady", {
 		role = roleChoice,
-		stage = stageChoice,
 	})
 end)
 
@@ -155,6 +156,9 @@ remotes:on("RoleUpdate", function(payload: any)
 	local roleName = if typeof(payload) == "table" then payload.role else payload
 	if typeof(roleName) == "string" then
 		gui.setRoleLabel(roleName)
+		if roleName == "Protagonist" or roleName == "Admin" then
+			gui.showTitle(false)
+		end
 	end
 end)
 
@@ -174,6 +178,7 @@ end)
 -- afterward would overwrite a stage cue chosen by a fast player.
 LightingController.applyScene("Lobby")
 ContentAudio.ambienceForScene("Lobby")
+StageTeleporterListener.start()
 FirstPerson.release()
 gui.showTitle(true)
 
