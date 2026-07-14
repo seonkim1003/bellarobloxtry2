@@ -377,7 +377,8 @@ local ContentConfig = {
 				gigi = 9747993459, -- Pet The Dog → Gigi
 			},
 			props = {
-				letterFragments = 118658326038279, -- 95 Theses / old paper
+				letterFragments = 17475591057, -- Clickable Note
+				fatBart = 102058945923521, -- title-screen character decoration
 			},
 			sources = {
 				lobby = "https://create.roblox.com/store/asset/9271965383/Lobby-Island",
@@ -389,7 +390,8 @@ local ContentConfig = {
 				ramboEvil = "https://create.roblox.com/store/asset/5292722268/Cartoon-Dog-Killer",
 				robertPattinson = "https://create.roblox.com/store/asset/11851270/Edward-Cullen",
 				gigi = "https://create.roblox.com/store/asset/9747993459/Pet-The-Dog",
-				letterFragments = "https://create.roblox.com/store/asset/118658326038279/95-Theses",
+				letterFragments = "https://create.roblox.com/store/asset/17475591057/Clickable-Note",
+				fatBart = "https://create.roblox.com/store/asset/102058945923521/Fat-Bart",
 			},
 		},
 		models = {
@@ -402,7 +404,8 @@ local ContentConfig = {
 			maze = "rbxassetid://114374837037591",
 			tower = "rbxassetid://14446703870",
 			field = "rbxassetid://13088916306",
-			letterFragments = "rbxassetid://118658326038279",
+			letterFragments = "rbxassetid://17475591057",
+			fatBart = "rbxassetid://102058945923521",
 		},
 		-- Animation asset IDs (NOT sounds). Remain placeholders until creator uploads.
 		animations = {

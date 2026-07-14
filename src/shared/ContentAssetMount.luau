@@ -546,6 +546,12 @@ function ContentAssetMount.mountAll()
 		marketplace.props.letterFragments,
 		placeLetterFragments(templates)
 	)
+	setMountStatus(
+		templates,
+		"fatBart",
+		marketplace.props.fatBart,
+		storeCharacterTemplate(templates, "TitleFatBart", marketplace.props.fatBart)
+	)
 	for _, step in CollectionService:GetTagged("ASMRStep") do
 		if step:IsA("BasePart") then
 			step.CanCollide = true

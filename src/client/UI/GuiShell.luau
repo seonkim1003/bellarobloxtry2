@@ -7,6 +7,7 @@
 
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
@@ -46,6 +47,57 @@ export type GuiShellApi = {
 local GuiShell = {}
 
 local TOUCH_MIN = ContentConfig.ui.touchMinButtonPx or 72
+
+local function mountModelViewport(
+	parent: Instance,
+	name: string,
+	templateName: string,
+	position: UDim2,
+	viewportSize: UDim2
+): ViewportFrame
+	local viewport = Instance.new("ViewportFrame")
+	viewport.Name = name
+	viewport.BackgroundTransparency = 1
+	viewport.Position = position
+	viewport.Size = viewportSize
+	viewport.Ambient = Color3.fromRGB(190, 190, 205)
+	viewport.LightColor = Color3.fromRGB(255, 238, 220)
+	viewport.LightDirection = Vector3.new(-1, -0.6, -1)
+	viewport.Parent = parent
+
+	task.spawn(function()
+		local templates = ReplicatedStorage:WaitForChild("ContentModels", 12)
+		if templates == nil then
+			return
+		end
+		local template = templates:WaitForChild(templateName, 12)
+		if template == nil or not template:IsA("Model") or viewport.Parent == nil then
+			return
+		end
+
+		local world = Instance.new("WorldModel")
+		world.Parent = viewport
+		local character = template:Clone()
+		for _, descendant in character:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Anchored = true
+			end
+		end
+		character.Parent = world
+
+		local bounds, size = character:GetBoundingBox()
+		character:PivotTo(character:GetPivot() - bounds.Position)
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 32
+		camera.CFrame = CFrame.lookAt(
+			Vector3.new(0, size.Y * 0.05, math.max(size.X, size.Y, size.Z) * 2.15),
+			Vector3.new(0, size.Y * 0.05, 0)
+		)
+		camera.Parent = viewport
+		viewport.CurrentCamera = camera
+	end)
+	return viewport
+end
 
 local function createTextLabel(parent: Instance, name: string, props: { [string]: any }): TextLabel
 	local label = Instance.new("TextLabel")
@@ -152,11 +204,18 @@ function GuiShell.mount(): GuiShellApi
 	titleFrame.Size = UDim2.fromScale(1, 1)
 	titleFrame.Visible = true
 	titleFrame.Parent = screenGui
+	mountModelViewport(
+		titleFrame,
+		"FatBart",
+		"TitleFatBart",
+		UDim2.fromScale(0.72, 0.1),
+		UDim2.fromScale(0.25, 0.42)
+	)
 
 	createTextLabel(titleFrame, "Brand", {
 		Text = ContentConfig.projectTitle,
-		Position = UDim2.fromScale(0.1, 0.18),
-		Size = UDim2.fromScale(0.8, 0.12),
+		Position = UDim2.fromScale(0.07, 0.18),
+		Size = UDim2.fromScale(0.66, 0.12),
 		Font = Enum.Font.GothamBold,
 	})
 	createTextLabel(titleFrame, "Prompt", {
@@ -240,6 +299,14 @@ function GuiShell.mount(): GuiShellApi
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Visible = false,
 	})
+	local fragmentIcon = mountModelViewport(
+		screenGui,
+		"FragmentIcon",
+		"LetterFragmentTemplate",
+		UDim2.fromScale(0.6, 0.035),
+		UDim2.fromScale(0.055, 0.075)
+	)
+	fragmentIcon.Visible = false
 
 	-- Tower progress (step / flight)
 	local towerProgressLabel = createTextLabel(screenGui, "TowerProgress", {
@@ -583,6 +650,7 @@ function GuiShell.mount(): GuiShellApi
 		end,
 		setFragmentCount = function(collected: number, total: number)
 			fragmentLabel.Visible = true
+			fragmentIcon.Visible = true
 			local remaining = math.max(total - collected, 0)
 			fragmentLabel.Text =
 				`{ContentConfig.ui.fragmentLabel}: {collected} / {total}  ({remaining} left)`

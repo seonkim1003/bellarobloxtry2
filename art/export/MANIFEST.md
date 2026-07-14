@@ -15,14 +15,15 @@ Reviewed exports and Roblox asset IDs belong in `art/export`.
 | Rambo (scary) | `5292722268` | Model | [Cartoon Dog Killer](https://create.roblox.com/store/asset/5292722268/Cartoon-Dog-Killer) | Stand-in template → scary Rambo | Replace with creator-owned when ready |
 | Robert Pattinson | `11851270` | Model | [Edward Cullen](https://create.roblox.com/store/asset/11851270/Edward-Cullen) | Scaled, ground-aligned stand-in template → Robert Pattinson | Replace with creator-owned when ready |
 | Gigi | `9747993459` | Model | [Pet The Dog](https://create.roblox.com/store/asset/9747993459/Pet-The-Dog) | Stand-in template → Gigi | Replace with creator-owned when ready |
-| Letter fragments | `118658326038279` | Model | [95 Theses](https://create.roblox.com/store/asset/118658326038279/95-Theses) | Cloned to fragment markers | Creator must confirm license |
+| Letter fragments / HUD icon | `17475591057` | Model | [Clickable Note](https://create.roblox.com/store/asset/17475591057/Clickable-Note) | Cloned to fragment markers and rendered in the HUD | Creator-selected |
+| Title-side character | `102058945923521` | Model | [Fat Bart](https://create.roblox.com/store/asset/102058945923521/Fat-Bart) | Sanitized and rendered beside the title in a ViewportFrame | Creator-selected |
 
 ## Creator media still awaiting upload
 
 | Role | ContentConfig key | Type | Asset ID | Status |
 | --- | --- | --- | --- | --- |
-| Title logo | `assets.images.titleLogo` | Image | `rbxassetid://0` | Placeholder |
-| Fragment icon | `assets.images.fragmentIcon` | Image | `rbxassetid://0` | Placeholder |
+| Title logo | `assets.images.titleLogo` | Image | `rbxassetid://0` | Replaced in the current UI by title text plus the Fat Bart model |
+| Fragment icon | `assets.images.fragmentIcon` | Image | `rbxassetid://0` | Replaced in the current UI by the Clickable Note model |
 | Credits backdrop | `assets.images.creditsBackdrop` | Image | `rbxassetid://0` | Placeholder |
 | All ambience / stings / UI / ASMR | `sounds.*` | Audio | `rbxassetid://0` | Placeholder |
 | Kidnap / revive / corruption | `assets.animations.*` | Animation | `rbxassetid://0` | Placeholder (not sound constants) |

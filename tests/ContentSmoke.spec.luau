@@ -122,5 +122,16 @@ for key, id in pairs(ContentConfig.assets.marketplace.characters) do
 	local modelKey = key == "ramboFriendly" and "rambo" or key
 	assert(ContentConfig.assets.models[modelKey] == `rbxassetid://{id}`, `manifest mismatch {key}`)
 end
+for key, id in pairs(ContentConfig.assets.marketplace.props) do
+	assert(ContentConfig.assets.models[key] == `rbxassetid://{id}`, `manifest mismatch {key}`)
+end
+assert(
+	ContentConfig.assets.marketplace.props.letterFragments == 17475591057,
+	"Clickable Note must supply letter fragments"
+)
+assert(
+	ContentConfig.assets.marketplace.props.fatBart == 102058945923521,
+	"Fat Bart must supply the title-side character"
+)
 
 print("content smoke test passed")
