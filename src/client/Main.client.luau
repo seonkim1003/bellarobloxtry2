@@ -38,12 +38,15 @@ local FragmentFeedback =
 	require(clientRoot:WaitForChild("Feedback"):WaitForChild("FragmentFeedback"))
 local DetectionFeedback =
 	require(clientRoot:WaitForChild("Feedback"):WaitForChild("DetectionFeedback"))
+local CombatFeedback = require(clientRoot:WaitForChild("Feedback"):WaitForChild("CombatFeedback"))
 local LetterPanel = require(clientRoot:WaitForChild("Feedback"):WaitForChild("LetterPanel"))
 local FragmentPrompts =
 	require(clientRoot:WaitForChild("Presentation"):WaitForChild("FragmentPrompts"))
 local FirstPerson = require(clientRoot:WaitForChild("Presentation"):WaitForChild("FirstPerson"))
 local StoryPresenter =
 	require(clientRoot:WaitForChild("Presentation"):WaitForChild("StoryPresenter"))
+local NpcProximityAudio =
+	require(clientRoot:WaitForChild("Audio"):WaitForChild("NpcProximityAudio"))
 
 local MazePolish = require(clientRoot:WaitForChild("Scenes"):WaitForChild("MazePolish"))
 local FieldPolish = require(clientRoot:WaitForChild("Scenes"):WaitForChild("FieldPolish"))
@@ -81,6 +84,7 @@ local presenter = StoryPresenter.new({
 	firstPerson = FirstPerson,
 	fragmentPrompts = FragmentPrompts,
 	towerBuilder = ContentPackage.TowerBuilder,
+	npcAudio = NpcProximityAudio,
 })
 
 FirstPerson.bindCursorToggle(gui.setCursorEnabled)
@@ -179,6 +183,9 @@ end)
 LightingController.applyScene("Lobby")
 ContentAudio.ambienceForScene("Lobby")
 StageTeleporterListener.start()
+CombatFeedback.start()
+FirstPerson.start()
+-- Title menu needs a free cursor; stay locked in first person.
 FirstPerson.release()
 gui.showTitle(true)
 

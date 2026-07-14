@@ -26,6 +26,7 @@ export type DirectorDeps = {
 	firstPerson: any,
 	fragmentPrompts: any,
 	towerBuilder: any,
+	npcAudio: any,
 }
 
 local StoryPresenter = {}
@@ -102,6 +103,9 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	self:_restorePlayerMovement()
 	self._state = state
 	local d = self._deps
+	if d.npcAudio and d.npcAudio.applyStoryState then
+		d.npcAudio.applyStoryState(state)
+	end
 	if state ~= "RoleLobby" and state ~= "Credits" then
 		d.gui.showTitle(false)
 	end
@@ -153,6 +157,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	elseif state == "RamboTaken" then
 		d.detection.reset()
 		d.audio.setChaseTension(false)
+		d.audio.playMazeExit()
 		d.sprint:disable()
 		d.firstPerson.release()
 		d.gui.setObjective("Rambo was taken...")
@@ -197,6 +202,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.firstPerson.apply()
 		d.lighting.applyScene("Tower")
 		d.audio.ambienceForScene("Tower")
+		d.audio.playStinger()
 		d.towerBuilder.rebuildFlights()
 		d.asmr:start()
 		d.sprint:enable()
@@ -208,10 +214,12 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		self:_finishCue(payload)
 	elseif state == "RevivePrompt" then
 		d.asmr:stop()
+		d.audio.playTowerSummit()
 		d.gui.showRevive(false)
 		d.cinematics:playSequence("revive", function()
 			self:_finishCinematic(function()
-				-- Do not expose the choice while another sequence owns the camera.
+				-- Unlock cursor for the revive choice while staying first-person.
+				d.firstPerson.release()
 				d.gui.showRevive(true)
 			end)
 		end)
@@ -358,6 +366,9 @@ function StoryPresenter.resetForReplay(self: StoryPresenter)
 	d.robber.clear()
 	d.fragmentPrompts.stop()
 	d.audio.reset()
+	if d.npcAudio and d.npcAudio.reset then
+		d.npcAudio.reset()
+	end
 	d.firstPerson.release()
 	d.gui.showCredits(false)
 	d.gui.showRevive(false)

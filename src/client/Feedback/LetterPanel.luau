@@ -138,7 +138,10 @@ end
 
 function LetterPanel.hide()
 	cancelTween()
-	if guiRef then
+	if guiRef and guiRef.Enabled then
+		ContentAudio.playLetterClose()
+		guiRef.Enabled = false
+	elseif guiRef then
 		guiRef.Enabled = false
 	end
 end

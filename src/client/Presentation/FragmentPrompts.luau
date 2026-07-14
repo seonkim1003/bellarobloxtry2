@@ -5,9 +5,13 @@
 
 local CollectionService = game:GetService("CollectionService")
 
+local ContentAudio =
+	require(script.Parent.Parent:WaitForChild("Audio"):WaitForChild("ContentAudio"))
+
 local FragmentPrompts = {}
 
 local connections: { RBXScriptConnection } = {}
+local lastHoldTick = 0
 
 local function attachPrompt(target: Instance)
 	local part: BasePart? = nil
@@ -32,6 +36,24 @@ local function attachPrompt(target: Instance)
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
 	prompt.Parent = part
+
+	table.insert(
+		connections,
+		prompt.PromptShown:Connect(function()
+			ContentAudio.playPromptShown()
+		end)
+	)
+	table.insert(
+		connections,
+		prompt.PromptButtonHoldBegan:Connect(function()
+			local now = os.clock()
+			if now - lastHoldTick < 0.35 then
+				return
+			end
+			lastHoldTick = now
+			ContentAudio.playPromptHold()
+		end)
+	)
 end
 
 function FragmentPrompts.start()

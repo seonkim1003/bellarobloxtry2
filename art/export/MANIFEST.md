@@ -57,6 +57,7 @@ Reviewed exports and Roblox asset IDs belong in `art/export`.
 | Letter open | `letterOpen` | `9118834867` | ProSoundEffects — Scrapbook Open 5 |
 | Respawn soft | `respawnSoft` | `9113840154` | ProSoundEffects — Cloth Whoosh |
 | Teleporter activate | `teleporterActivate` | `9113840530` | ProSoundEffects — Cloth Whoosh |
+| Sprint / hit / death / HUD / prompts | `sprintStart` … `creditsOpen` | reuse claimed IDs + engine footstep loops | Full interaction coverage (disk-only; no new Studio inserts) |
 | Butter ASMR step | `obbyMaterials.Butter` | `9125563505` | ProSoundEffects — Floor Creak |
 
 **Studio requirement:** Get each free model with the Toolbox (or own the asset) for the place creator account before Play. `InsertService:LoadAsset` fails with a warn and keeps neon placeholders if an ID cannot be loaded.

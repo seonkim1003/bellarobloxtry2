@@ -22,12 +22,12 @@ local lastPlayed: { [Instance]: number } = {}
 local connections: { RBXScriptConnection } = {}
 local started = false
 
-local function playActivate()
+local function playActivate(part: BasePart)
 	local entry = ContentConfig.sounds.teleporterActivate
 	if entry == nil then
 		entry = ContentConfig.sounds.stateTransition
 	end
-	ContentAudio.playEntry(entry)
+	ContentAudio.playEntry(entry, part)
 end
 
 local function onTouched(part: BasePart, hit: BasePart)
@@ -42,7 +42,7 @@ local function onTouched(part: BasePart, hit: BasePart)
 		return
 	end
 	lastPlayed[part] = now
-	playActivate()
+	playActivate(part)
 end
 
 local function bindPart(instance: Instance)

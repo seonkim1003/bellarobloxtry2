@@ -597,6 +597,45 @@ local ContentConfig = {
 		letterOpen = { soundId = "rbxassetid://9118834867", volume = 0.55, looped = false }, -- Scrapbook Open
 		respawnSoft = { soundId = "rbxassetid://9113840154", volume = 0.4, looped = false }, -- Cloth Whoosh
 		teleporterActivate = { soundId = "rbxassetid://9113840530", volume = 0.5, looped = false }, -- Cloth Whoosh
+		-- Full-coverage cues (reuse licensed IDs already claimed — no Studio MCP inserts)
+		sprintStart = { soundId = "rbxassetid://9113840530", volume = 0.35, looped = false },
+		sprintStop = { soundId = "rbxassetid://9113840154", volume = 0.28, looped = false },
+		playerHit = { soundId = "rbxassetid://9113535048", volume = 0.62, looped = false },
+		playerDeath = { soundId = "rbxassetid://1846435267", volume = 0.55, looped = false },
+		healthLow = { soundId = "rbxassetid://1843867314", volume = 0.4, looped = false },
+		hostileApproach = {
+			soundId = "rbxasset://sounds/action_footsteps_wood.mp3",
+			volume = 0.35,
+			looped = true,
+		},
+		friendlyApproach = {
+			soundId = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			volume = 0.22,
+			looped = true,
+		},
+		evilApproach = {
+			soundId = "rbxasset://sounds/action_footsteps_wood.mp3",
+			volume = 0.3,
+			looped = true,
+		},
+		mazeExit = { soundId = "rbxassetid://9113840280", volume = 0.55, looped = false },
+		towerSummit = { soundId = "rbxassetid://1841760614", volume = 0.5, looped = false },
+		revivePanelOpen = { soundId = "rbxassetid://9125899104", volume = 0.4, looped = false },
+		threatClear = { soundId = "rbxassetid://9126076118", volume = 0.35, looped = false },
+		promptShown = { soundId = "rbxassetid://17582213219", volume = 0.3, looped = false },
+		promptHold = { soundId = "rbxassetid://17582213219", volume = 0.2, looped = false },
+		subtitleTick = { soundId = "rbxassetid://17582213219", volume = 0.18, looped = false },
+		objectiveTick = { soundId = "rbxassetid://17582213219", volume = 0.16, looped = false },
+		uiError = {
+			soundId = "rbxasset://sounds/electronicpingshort.wav",
+			volume = 0.35,
+			looped = false,
+		},
+		cursorToggle = { soundId = "rbxassetid://17582213219", volume = 0.4, looped = false },
+		cameraLock = { soundId = "rbxassetid://9113840154", volume = 0.32, looped = false },
+		cinematicCut = { soundId = "rbxassetid://9113840530", volume = 0.22, looped = false },
+		letterClose = { soundId = "rbxassetid://9118834867", volume = 0.4, looped = false }, -- Scrapbook (close)
+		creditsOpen = { soundId = "rbxassetid://9113840280", volume = 0.35, looped = false },
 		asmrSteps = asmrStepSounds,
 		obbyMaterials = obbyMaterials,
 	},

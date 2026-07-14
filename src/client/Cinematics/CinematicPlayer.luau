@@ -294,9 +294,12 @@ function CinematicPlayer.playSequence(
 	end
 	task.spawn(function()
 		local ok = xpcall(function()
-			for _, step in steps do
+			for stepIndex, step in steps do
 				if not self:_stillCurrent(generation) then
 					return
+				end
+				if stepIndex > 1 and self._audio and self._audio.playCinematicCut then
+					self._audio.playCinematicCut()
 				end
 				self:_tweenFade(0, step.fadeInSeconds, generation)
 				if not self:_stillCurrent(generation) then

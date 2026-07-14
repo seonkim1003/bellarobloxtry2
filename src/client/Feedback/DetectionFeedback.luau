@@ -131,6 +131,7 @@ function DetectionFeedback.showChase(active: boolean)
 	else
 		setStatus("● Clear", Color3.fromRGB(160, 220, 160))
 		ContentAudio.setChaseTension(false)
+		ContentAudio.playThreatClear()
 		playFade(frame, frame.BackgroundTransparency, 1, 0.35)
 		task.delay(1.2, function()
 			setStatus("", Color3.fromRGB(255, 255, 255))

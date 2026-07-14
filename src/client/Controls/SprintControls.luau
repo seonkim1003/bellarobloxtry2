@@ -11,6 +11,8 @@ local UserInputService = game:GetService("UserInputService")
 
 local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChild("SharedAccess"))
 local ContentConfig = SharedAccess.requireContentConfig()
+local ContentAudio =
+	require(script.Parent.Parent:WaitForChild("Audio"):WaitForChild("ContentAudio"))
 
 local SprintControls = {}
 SprintControls.__index = SprintControls
@@ -66,13 +68,22 @@ function SprintControls:_applySpeed()
 end
 
 function SprintControls:_setSprinting(active: boolean)
-	self._sprinting = active and self._enabled
+	local nextActive = active and self._enabled
+	local changed = self._sprinting ~= nextActive
+	self._sprinting = nextActive
 	self:_applySpeed()
 	if self._touchButton then
 		self._touchButton.BackgroundColor3 = if self._sprinting
 			then Color3.fromRGB(80, 140, 90)
 			else Color3.fromRGB(35, 35, 48)
 		self._touchButton.Text = if self._sprinting then "SPRINTING" else "SPRINT"
+	end
+	if changed then
+		if self._sprinting then
+			ContentAudio.playSprintStart()
+		else
+			ContentAudio.playSprintStop()
+		end
 	end
 end
 

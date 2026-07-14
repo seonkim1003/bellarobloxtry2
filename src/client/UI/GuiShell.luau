@@ -628,6 +628,7 @@ function GuiShell.mount(): GuiShellApi
 	ActionBindings.setHandlers({
 		ready = function()
 			if titleVisible then
+				ContentAudio.playUiConfirm()
 				invokeRoleChoice()
 			end
 		end,
@@ -648,23 +649,34 @@ function GuiShell.mount(): GuiShellApi
 		end,
 		leave = function()
 			if creditsVisible and not leaveConfirmVisible then
+				ContentAudio.playUiClick()
 				showLeaveConfirm(true)
 			end
 		end,
 		leaveConfirm = function()
 			if leaveConfirmVisible then
+				ContentAudio.playUiConfirm()
 				showLeaveConfirm(false)
-				if leaveHandler then
+				if leaveConfirmHandler then
+					leaveConfirmHandler(true)
+				elseif leaveHandler then
 					leaveHandler()
 				end
 			end
 		end,
 		leaveCancel = function()
 			if leaveConfirmVisible then
+				ContentAudio.playUiClick()
 				showLeaveConfirm(false)
+				if leaveConfirmHandler then
+					leaveConfirmHandler(false)
+				end
 			end
 		end,
-		reducedMotionToggle = toggleReducedMotion,
+		reducedMotionToggle = function()
+			ContentAudio.playUiClick()
+			toggleReducedMotion()
+		end,
 	})
 	ActionBindings.start()
 	showRoleSelection()
@@ -683,10 +695,26 @@ function GuiShell.mount(): GuiShellApi
 		pad.PaddingTop = UDim.new(inset, guiInset.Y > 0 and 0 or 8)
 	end)
 
+	local lastObjectiveText = ""
+	local lastSubtitleAt = 0
+	local lastObjectiveAt = 0
+
 	local api: GuiShellApi = {
 		setObjective = function(text: string)
 			objectiveLabel.Visible = true
 			objectiveLabel.Text = text
+			local now = os.clock()
+			if text ~= "" and text ~= lastObjectiveText and now - lastObjectiveAt > 0.2 then
+				lastObjectiveAt = now
+				lastObjectiveText = text
+				ContentAudio.playObjectiveTick()
+				local lower = string.lower(text)
+				if
+					string.find(lower, "missing", 1, true) or string.find(lower, "need", 1, true)
+				then
+					ContentAudio.playUiError()
+				end
+			end
 		end,
 		setSubtitle = function(speaker: string?, text: string)
 			subtitleLabel.Visible = true
@@ -694,6 +722,11 @@ function GuiShell.mount(): GuiShellApi
 				subtitleLabel.Text = `{speaker}: {text}`
 			else
 				subtitleLabel.Text = text
+			end
+			local now = os.clock()
+			if text ~= "" and now - lastSubtitleAt > 0.15 then
+				lastSubtitleAt = now
+				ContentAudio.playSubtitleTick()
 			end
 		end,
 		clearSubtitle = function()
@@ -764,9 +797,13 @@ function GuiShell.mount(): GuiShellApi
 			syncBindings()
 		end,
 		showRevive = function(visible: boolean)
+			local opened = visible and not reviveVisible
 			reviveVisible = visible
 			reviveFrame.Visible = visible
 			if visible then
+				if opened then
+					ContentAudio.playRevivePanelOpen()
+				end
 				softTween(
 					reviveFrame,
 					TweenInfo.new(SessionPreferences.tweenSeconds(0.25, 0), Enum.EasingStyle.Quad),
@@ -779,12 +816,16 @@ function GuiShell.mount(): GuiShellApi
 			syncBindings()
 		end,
 		showCredits = function(visible: boolean)
+			local opened = visible and not creditsVisible
 			creditsVisible = visible
 			creditsFrame.Visible = visible
 			if not visible then
 				showLeaveConfirm(false)
 			end
 			if visible then
+				if opened then
+					ContentAudio.playCreditsOpen()
+				end
 				ActionBindings.focus(replayButton)
 			else
 				ActionBindings.clearFocus()

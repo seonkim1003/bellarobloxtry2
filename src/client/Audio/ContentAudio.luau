@@ -337,8 +337,126 @@ function ContentAudio.playLetterOpen()
 	ContentAudio.playEntry(ContentConfig.sounds.letterOpen)
 end
 
+function ContentAudio.playLetterClose()
+	ContentAudio.playEntry(ContentConfig.sounds.letterClose)
+end
+
 function ContentAudio.playRespawn()
 	ContentAudio.playEntry(ContentConfig.sounds.respawnSoft)
+end
+
+function ContentAudio.playSprintStart()
+	ContentAudio.playEntry(ContentConfig.sounds.sprintStart)
+end
+
+function ContentAudio.playSprintStop()
+	ContentAudio.playEntry(ContentConfig.sounds.sprintStop)
+end
+
+function ContentAudio.playPlayerHit()
+	ContentAudio.playEntry(ContentConfig.sounds.playerHit)
+end
+
+function ContentAudio.playPlayerDeath()
+	ContentAudio.playEntry(ContentConfig.sounds.playerDeath)
+end
+
+function ContentAudio.playHealthLow()
+	ContentAudio.playEntry(ContentConfig.sounds.healthLow)
+end
+
+function ContentAudio.playMazeExit()
+	ContentAudio.playEntry(ContentConfig.sounds.mazeExit)
+end
+
+function ContentAudio.playTowerSummit()
+	ContentAudio.playEntry(ContentConfig.sounds.towerSummit)
+end
+
+function ContentAudio.playRevivePanelOpen()
+	ContentAudio.playEntry(ContentConfig.sounds.revivePanelOpen)
+end
+
+function ContentAudio.playThreatClear()
+	ContentAudio.playEntry(ContentConfig.sounds.threatClear)
+end
+
+function ContentAudio.playPromptShown()
+	ContentAudio.playEntry(ContentConfig.sounds.promptShown)
+end
+
+function ContentAudio.playPromptHold()
+	ContentAudio.playEntry(ContentConfig.sounds.promptHold)
+end
+
+function ContentAudio.playSubtitleTick()
+	ContentAudio.playEntry(ContentConfig.sounds.subtitleTick)
+end
+
+function ContentAudio.playObjectiveTick()
+	ContentAudio.playEntry(ContentConfig.sounds.objectiveTick)
+end
+
+function ContentAudio.playUiError()
+	ContentAudio.playEntry(ContentConfig.sounds.uiError)
+end
+
+function ContentAudio.playCursorToggle()
+	ContentAudio.playEntry(ContentConfig.sounds.cursorToggle)
+end
+
+function ContentAudio.playCameraLock()
+	ContentAudio.playEntry(ContentConfig.sounds.cameraLock)
+end
+
+function ContentAudio.playCinematicCut()
+	ContentAudio.playEntry(ContentConfig.sounds.cinematicCut)
+end
+
+function ContentAudio.playCreditsOpen()
+	ContentAudio.playEntry(ContentConfig.sounds.creditsOpen)
+end
+
+function ContentAudio.playSpatialLoop(entry: SoundEntry, parent: Instance, name: string): Sound?
+	local normalized = AssetFallback.normalizeSoundId(entry.soundId)
+	if isPlaceholderId(normalized) then
+		return nil
+	end
+	local existing = parent:FindFirstChild(name)
+	if existing and existing:IsA("Sound") then
+		if not existing.IsPlaying then
+			existing:Play()
+		end
+		return existing
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = name
+	AssetFallback.applySound(sound, normalized)
+	sound.Volume = entry.volume
+	sound.Looped = entry.looped
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = 6
+	sound.RollOffMaxDistance = 70
+	sound.SoundGroup = sfxGroup
+	sound.Parent = parent
+	local ok = pcall(function()
+		sound:Play()
+	end)
+	if not ok then
+		sound:Destroy()
+		return nil
+	end
+	return sound
+end
+
+function ContentAudio.stopSpatialLoop(parent: Instance?, name: string)
+	if parent == nil then
+		return
+	end
+	local existing = parent:FindFirstChild(name)
+	if existing and existing:IsA("Sound") then
+		destroySound(existing)
+	end
 end
 
 function ContentAudio.ambienceForScene(sceneId: string)
