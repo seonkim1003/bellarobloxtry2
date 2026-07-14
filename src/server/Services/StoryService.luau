@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
+local ProgressionRules = require(GameShared:WaitForChild("ProgressionRules"))
 local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local StoryService = {}
@@ -71,26 +72,20 @@ function StoryService.Transition(self: StoryService, nextState: string, reason: 
 	return true
 end
 
-function StoryService.StartFor(self: StoryService, player: Player): boolean
-	return self:StartForStage(player, Contract.States.MazeIntro)
-end
-
-function StoryService.StartForStage(self: StoryService, player: Player, startState: string): boolean
+function StoryService.StartFor(self: StoryService, player: Player, startState: string?): boolean
 	if player ~= self.roleService:GetProtagonist() or self.state ~= Contract.States.RoleLobby then
 		return false
 	end
-	local allowed = startState == Contract.States.MazeIntro
-		or startState == Contract.States.TowerClimb
-		or startState == Contract.States.FieldHunt
-	if not allowed then
+	local selectedState = startState or Contract.States.MazeIntro
+	if not ProgressionRules.isAllowedStartState(selectedState) then
 		return false
 	end
 	local previous = self.state
-	self.state = startState
+	self.state = selectedState
 	self.revision += 1
 	self.stateEnteredAt = os.clock()
 	self:_broadcast(Contract.Cues.StateChanged)
-	self.changed:Fire(startState, previous, "LobbyStageSelected")
+	self.changed:Fire(selectedState, previous, "LobbyStageSelected")
 	return true
 end
 

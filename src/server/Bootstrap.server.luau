@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
 local Config = require(GameShared:WaitForChild("SystemsConfig"))
+local ProgressionRules = require(GameShared:WaitForChild("ProgressionRules"))
 local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local Services = script.Parent:WaitForChild("Services")
@@ -99,8 +100,10 @@ remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player, 
 	if not validator:AllowAction(player, Contract.ClientEvents.RoleReady) then
 		return
 	end
-	local roleChoice = if typeof(payload) == "table" then payload.role else "Bella"
-	local stageChoice = if typeof(payload) == "table" then payload.stage else "Maze"
+	local roleChoice, stageChoice = ProgressionRules.parseLobbySelection(payload)
+	if not roleChoice or not stageChoice then
+		return
+	end
 	if roleChoice == "Admin" then
 		remotes[Contract.ServerEvents.AdminDiagnostics]:FireClient(player, {
 			message = "Admin requires authentication. Use /admin <password> in chat.",
@@ -110,10 +113,16 @@ remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player, 
 	if roleChoice ~= "Bella" or not roles:ClaimProtagonist(player) then
 		return
 	end
-	local selectedState = if stageChoice == "Obby"
-		then Contract.States.TowerClimb
-		elseif stageChoice == "Scavenger Hunt" then Contract.States.FieldHunt
-		else Contract.States.MazeIntro
+	local selectedState = ProgressionRules.startStateForStage(stageChoice)
+	if not selectedState then
+		return
+	end
+	if
+		(stageChoice == "Obby" and selectedState ~= Contract.States.TowerClimb)
+		or (stageChoice == "Scavenger Hunt" and selectedState ~= Contract.States.FieldHunt)
+	then
+		return
+	end
 	local markedReady = roles:MarkReady(player)
 	local startedStory = false
 	if
@@ -124,7 +133,7 @@ remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player, 
 			story:GetState()
 		)
 	then
-		startedStory = story:StartForStage(player, selectedState)
+		startedStory = story:StartFor(player, selectedState)
 	end
 	if not startedStory then
 		story:SendSnapshot(player)

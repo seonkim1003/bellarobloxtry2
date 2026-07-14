@@ -26,7 +26,6 @@ local cinematicNextStates: { [string]: string } = {
 	GuideEncounter = "TowerClimb",
 	Corruption = "FieldHunt",
 	LetterTheft = "DogFight",
-	DogFight = "Epilogue",
 	Epilogue = "LetterReveal",
 	LetterReveal = "Credits",
 }
