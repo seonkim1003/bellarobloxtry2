@@ -8,9 +8,12 @@ local Contract = require(ReplicatedStorage:WaitForChild("GameShared"):WaitForChi
 local CheckpointService = {}
 CheckpointService.__index = CheckpointService
 
-export type CheckpointService = typeof(setmetatable({} :: {
-	checkpoints: {[Player]: CFrame},
-}, CheckpointService))
+export type CheckpointService = typeof(setmetatable(
+	{} :: {
+		checkpoints: { [Player]: CFrame },
+	},
+	CheckpointService
+))
 
 function CheckpointService.new(): CheckpointService
 	return setmetatable({ checkpoints = {} }, CheckpointService)
@@ -25,7 +28,7 @@ local function markerCFrame(marker: Instance): CFrame?
 	return nil
 end
 
-function CheckpointService:FindSceneSpawn(sceneId: string): CFrame?
+function CheckpointService.FindSceneSpawn(_self: CheckpointService, sceneId: string): CFrame?
 	for _, marker in CollectionService:GetTagged(Contract.Tags.SceneSpawn) do
 		if marker:GetAttribute(Contract.Attributes.SceneId) == sceneId then
 			local found = markerCFrame(marker)
@@ -37,7 +40,7 @@ function CheckpointService:FindSceneSpawn(sceneId: string): CFrame?
 	return nil
 end
 
-function CheckpointService:Set(player: Player, sceneId: string): boolean
+function CheckpointService.Set(self: CheckpointService, player: Player, sceneId: string): boolean
 	local found = self:FindSceneSpawn(sceneId)
 	if not found then
 		warn(`Missing SceneSpawn for checkpoint {sceneId}`)
@@ -47,7 +50,7 @@ function CheckpointService:Set(player: Player, sceneId: string): boolean
 	return true
 end
 
-function CheckpointService:SetCurrent(player: Player): boolean
+function CheckpointService.SetCurrent(self: CheckpointService, player: Player): boolean
 	local character = player.Character
 	if not character then
 		return false
@@ -56,7 +59,7 @@ function CheckpointService:SetCurrent(player: Player): boolean
 	return true
 end
 
-function CheckpointService:Respawn(player: Player): boolean
+function CheckpointService.Respawn(self: CheckpointService, player: Player): boolean
 	local destination = self.checkpoints[player]
 	local character = player.Character
 	if not destination or not character then
@@ -70,11 +73,11 @@ function CheckpointService:Respawn(player: Player): boolean
 	return true
 end
 
-function CheckpointService:Clear(player: Player)
+function CheckpointService.Clear(self: CheckpointService, player: Player)
 	self.checkpoints[player] = nil
 end
 
-function CheckpointService:ClearAll()
+function CheckpointService.ClearAll(self: CheckpointService)
 	table.clear(self.checkpoints)
 end
 

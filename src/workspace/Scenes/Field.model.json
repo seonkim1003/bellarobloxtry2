@@ -7,7 +7,7 @@
       "tags": ["SceneSpawn"],
       "attributes": {
         "MarkerId": "FieldEntrance",
-        "SceneId": "Field"
+        "SceneId": "FieldEntrance"
       },
       "properties": {
         "Anchored": true,
@@ -30,7 +30,7 @@
       "tags": ["NPCSpawn"],
       "attributes": {
         "MarkerId": "EvilRamboSpawn",
-        "NPCType": "RamboEvil",
+        "NPCType": "EvilRambo",
         "SceneId": "Field"
       },
       "properties": {
@@ -54,6 +54,7 @@
       "tags": ["PatrolPoint"],
       "attributes": {
         "MarkerId": "PatrolA",
+        "NPCType": "EvilRambo",
         "SceneId": "Field",
         "SequenceIndex": 1
       },
@@ -78,6 +79,7 @@
       "tags": ["PatrolPoint"],
       "attributes": {
         "MarkerId": "PatrolB",
+        "NPCType": "EvilRambo",
         "SceneId": "Field",
         "SequenceIndex": 2
       },
@@ -102,6 +104,7 @@
       "tags": ["PatrolPoint"],
       "attributes": {
         "MarkerId": "PatrolC",
+        "NPCType": "EvilRambo",
         "SceneId": "Field",
         "SequenceIndex": 3
       },
@@ -214,6 +217,40 @@
         "Color": [0.7, 0.4, 0.5],
         "Material": "Neon",
         "Transparency": 0.35
+      }
+    },
+    {
+      "name": "TheftGigiMarker",
+      "className": "Part",
+      "tags": ["CinematicMarker"],
+      "attributes": {
+        "MarkerId": "TheftGigi",
+        "SceneId": "Field",
+        "SequenceIndex": 2
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2,2,2],
+        "CFrame": [1,0,0, 0,1,0, 0,0,1, 246,2,7],
+        "Transparency": 1
+      }
+    },
+    {
+      "name": "FightSilhouetteMarker",
+      "className": "Part",
+      "tags": ["CinematicMarker"],
+      "attributes": {
+        "MarkerId": "FightSilhouette",
+        "SceneId": "Field",
+        "SequenceIndex": 3
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2,2,2],
+        "CFrame": [1,0,0, 0,1,0, 0,0,1, 248,2,10],
+        "Transparency": 1
       }
     },
     {

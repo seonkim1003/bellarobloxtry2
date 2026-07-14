@@ -1,6 +1,6 @@
 --!strict
 --[[
-	Applies ContentConfig lighting presets (RGB tables â†’ Color3).
+	Applies ContentConfig lighting presets (RGB tables to Color3).
 ]]
 
 local Lighting = game:GetService("Lighting")

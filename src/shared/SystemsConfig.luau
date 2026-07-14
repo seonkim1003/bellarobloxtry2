@@ -16,7 +16,9 @@ return table.freeze({
 		InitialState = "RoleLobby",
 		FragmentCount = 3,
 		MazeCheckpointSceneId = "MazeCheckpoint",
+		TowerCheckpointSceneId = "TowerBase",
 		FieldCheckpointSceneId = "FieldEntrance",
+		EpilogueCheckpointSceneId = "EpilogueSeat",
 	}),
 	NPC = table.freeze({
 		RepathSeconds = 0.65,

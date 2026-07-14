@@ -105,7 +105,7 @@ local placeholderObjects: { PlaceholderObject } = {
 		sceneId = "Maze",
 		name = "MazeSpawn",
 		tag = "SceneSpawn",
-		attributes = { SceneId = "Maze", MarkerId = "MazeStart" },
+		attributes = { SceneId = "MazeCheckpoint", MarkerId = "MazeStart" },
 	},
 	{
 		sceneId = "Maze",
@@ -117,7 +117,29 @@ local placeholderObjects: { PlaceholderObject } = {
 		sceneId = "Maze",
 		name = "RamboGuideSpawn",
 		tag = "NPCSpawn",
-		attributes = { SceneId = "Maze", MarkerId = "RamboGuideSpawn", NPCType = "RamboGuide" },
+		attributes = {
+			SceneId = "Maze",
+			MarkerId = "RamboGuideSpawn",
+			NPCType = "FriendlyRambo",
+		},
+	},
+	{
+		sceneId = "Maze",
+		name = "RamboGuideTarget1",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Maze", MarkerId = "RamboGuideTarget", SequenceIndex = 1 },
+	},
+	{
+		sceneId = "Maze",
+		name = "RamboGuideTarget2",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Maze", MarkerId = "RamboGuideTarget", SequenceIndex = 2 },
+	},
+	{
+		sceneId = "Maze",
+		name = "RamboGuideTarget3",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Maze", MarkerId = "RamboGuideTarget", SequenceIndex = 3 },
 	},
 	{
 		sceneId = "Maze",
@@ -135,7 +157,7 @@ local placeholderObjects: { PlaceholderObject } = {
 		sceneId = "Tower",
 		name = "TowerSpawn",
 		tag = "SceneSpawn",
-		attributes = { SceneId = "Tower", MarkerId = "TowerBase" },
+		attributes = { SceneId = "TowerBase", MarkerId = "TowerBase" },
 	},
 	{
 		sceneId = "Tower",
@@ -160,34 +182,55 @@ local placeholderObjects: { PlaceholderObject } = {
 		attributes = { SceneId = "Tower", MarkerId = "ReviveCam", SequenceIndex = 1 },
 	},
 	{
+		sceneId = "Tower",
+		name = "TowerTopTrigger",
+		tag = "StoryTrigger",
+		attributes = { SceneId = "Tower", MarkerId = "TowerTop" },
+	},
+	{
 		sceneId = "Field",
 		name = "FieldSpawn",
 		tag = "SceneSpawn",
-		attributes = { SceneId = "Field", MarkerId = "FieldEntrance" },
+		attributes = { SceneId = "FieldEntrance", MarkerId = "FieldEntrance" },
 	},
 	{
 		sceneId = "Field",
 		name = "EvilRamboSpawn",
 		tag = "NPCSpawn",
-		attributes = { SceneId = "Field", MarkerId = "EvilRamboSpawn", NPCType = "RamboEvil" },
+		attributes = { SceneId = "Field", MarkerId = "EvilRamboSpawn", NPCType = "EvilRambo" },
 	},
 	{
 		sceneId = "Field",
 		name = "PatrolA",
 		tag = "PatrolPoint",
-		attributes = { SceneId = "Field", MarkerId = "PatrolA", SequenceIndex = 1 },
+		attributes = {
+			SceneId = "Field",
+			MarkerId = "PatrolA",
+			NPCType = "EvilRambo",
+			SequenceIndex = 1,
+		},
 	},
 	{
 		sceneId = "Field",
 		name = "PatrolB",
 		tag = "PatrolPoint",
-		attributes = { SceneId = "Field", MarkerId = "PatrolB", SequenceIndex = 2 },
+		attributes = {
+			SceneId = "Field",
+			MarkerId = "PatrolB",
+			NPCType = "EvilRambo",
+			SequenceIndex = 2,
+		},
 	},
 	{
 		sceneId = "Field",
 		name = "PatrolC",
 		tag = "PatrolPoint",
-		attributes = { SceneId = "Field", MarkerId = "PatrolC", SequenceIndex = 3 },
+		attributes = {
+			SceneId = "Field",
+			MarkerId = "PatrolC",
+			NPCType = "EvilRambo",
+			SequenceIndex = 3,
+		},
 	},
 	{
 		sceneId = "Field",
@@ -217,7 +260,7 @@ local placeholderObjects: { PlaceholderObject } = {
 		sceneId = "Epilogue",
 		name = "EpilogueSpawn",
 		tag = "SceneSpawn",
-		attributes = { SceneId = "Epilogue", MarkerId = "EpilogueSeat" },
+		attributes = { SceneId = "EpilogueSeat", MarkerId = "EpilogueSeat" },
 	},
 	{
 		sceneId = "Epilogue",
@@ -584,6 +627,16 @@ local ContentConfig = {
 		"ReviveConfirmed",
 		"ReplayRequested",
 		"RoleReady",
+	},
+	cinematicAckStates = {
+		MazeIntro = true,
+		RamboTaken = true,
+		GuideEncounter = true,
+		Corruption = true,
+		LetterTheft = true,
+		DogFight = true,
+		Epilogue = true,
+		LetterReveal = true,
 	},
 
 	controls = {

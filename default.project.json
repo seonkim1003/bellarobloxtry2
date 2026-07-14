@@ -26,8 +26,8 @@
     },
     "Workspace": {
       "$className": "Workspace",
-      "GameWorld": {
-        "$path": "src/workspace"
+      "Scenes": {
+        "$path": "src/workspace/Scenes"
       }
     }
   }

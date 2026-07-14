@@ -44,8 +44,9 @@ function StoryPresenter.new(deps: DirectorDeps): StoryPresenter
 end
 
 function StoryPresenter:_finishCue(payload: any)
-	if typeof(payload) == "table" and typeof(payload.cueId) == "string" then
-		self._deps.remotes:request("CinematicFinished", { cueId = payload.cueId })
+	local state = if typeof(payload) == "table" then payload.state else payload
+	if typeof(state) == "string" and ContentConfig.cinematicAckStates[state] then
+		self._deps.remotes:request("CinematicFinished", state)
 	end
 end
 
@@ -90,7 +91,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.lighting.applyScene("Maze")
 		d.audio.ambienceForScene("Maze")
 		d.detection.showChase(true)
-		d.gui.setObjective("Donâ€™t let Bella catch you")
+		d.gui.setObjective("Don't let Bella catch you")
 		d.gui.setSubtitle("System", ContentConfig.dialogue.bellaChase[1].text)
 		task.delay(ContentConfig.dialogue.bellaChase[1].durationSeconds, function()
 			d.gui.clearSubtitle()
@@ -98,7 +99,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		self:_finishCue(payload)
 	elseif state == "RamboTaken" then
 		d.detection.reset()
-		d.gui.setObjective("Rambo was takenâ€¦")
+		d.gui.setObjective("Rambo was taken...")
 		d.cinematics:playSequence("kidnap", function()
 			self:_finishCue(payload)
 		end)
@@ -116,7 +117,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.towerBuilder.rebuildFlights()
 		d.asmr.start()
 		d.sprint.enable()
-		d.gui.setObjective("Climb the tower â€” every step sings")
+		d.gui.setObjective("Climb the tower - every step sings")
 		d.gui.setSubtitle("Robber Patterinson", ContentConfig.dialogue.robberGuide[2].text)
 		task.delay(4, function()
 			d.gui.clearSubtitle()
@@ -124,9 +125,10 @@ function StoryPresenter:handleStoryCue(payload: any)
 		self:_finishCue(payload)
 	elseif state == "RevivePrompt" then
 		d.asmr.stop()
-		d.gui.showRevive(true)
+		d.gui.showRevive(false)
 		d.cinematics:playSequence("revive", function()
-			-- ReviveConfirmed is player-driven; do not auto-finish story here.
+			-- Do not expose the choice while another sequence owns the camera.
+			d.gui.showRevive(true)
 		end)
 	elseif state == "Corruption" then
 		d.gui.showRevive(false)
@@ -138,14 +140,14 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.audio.ambienceForScene("Field")
 		d.fragmentPrompts.start()
 		d.sprint.enable()
-		d.gui.setObjective("Find three letter fragments â€” stay quiet")
+		d.gui.setObjective("Find three letter fragments - stay quiet")
 		d.gui.setSubtitle("System", ContentConfig.dialogue.fieldHunt[1].text)
 		task.delay(ContentConfig.dialogue.fieldHunt[1].durationSeconds, function()
 			d.gui.clearSubtitle()
 		end)
 		self:_finishCue(payload)
 	elseif state == "LetterTheft" then
-		d.gui.setObjective("The pieces are takenâ€¦")
+		d.gui.setObjective("The pieces are taken...")
 		d.cinematics:playSequence("letterTheft", function()
 			self:_finishCue(payload)
 		end)
@@ -191,7 +193,7 @@ function StoryPresenter:handleFragment(payload: any)
 	if typeof(payload) ~= "table" then
 		return
 	end
-	local collected = payload.collected
+	local collected = payload.count
 	local total = payload.total or 3
 	if typeof(collected) == "number" then
 		self._deps.fragmentFeedback.pulse(collected, total)

@@ -5,16 +5,19 @@ local PathfindingService = game:GetService("PathfindingService")
 local PathAgent = {}
 PathAgent.__index = PathAgent
 
-export type PathAgent = typeof(setmetatable({} :: {
-	model: Model,
-	humanoid: Humanoid,
-	root: BasePart,
-	parameters: {[string]: any},
-	generation: number,
-	initialPivot: CFrame,
-}, PathAgent))
+export type PathAgent = typeof(setmetatable(
+	{} :: {
+		model: Model,
+		humanoid: Humanoid,
+		root: BasePart,
+		parameters: { [string]: any },
+		generation: number,
+		initialPivot: CFrame,
+	},
+	PathAgent
+))
 
-function PathAgent.new(model: Model, parameters: {[string]: any}?): PathAgent?
+function PathAgent.new(model: Model, parameters: { [string]: any }?): PathAgent?
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	local root = model:FindFirstChild("HumanoidRootPart")
 	if not humanoid or not root or not root:IsA("BasePart") then
@@ -38,12 +41,12 @@ function PathAgent.new(model: Model, parameters: {[string]: any}?): PathAgent?
 	}, PathAgent)
 end
 
-function PathAgent:Cancel()
+function PathAgent.Cancel(self: PathAgent)
 	self.generation += 1
 	self.humanoid:MoveTo(self.root.Position)
 end
 
-function PathAgent:MoveTo(destination: Vector3)
+function PathAgent.MoveTo(self: PathAgent, destination: Vector3)
 	self.generation += 1
 	local generation = self.generation
 	local path = PathfindingService:CreatePath(self.parameters)
@@ -74,7 +77,7 @@ function PathAgent:MoveTo(destination: Vector3)
 	end)
 end
 
-function PathAgent:Reset()
+function PathAgent.Reset(self: PathAgent)
 	self:Cancel()
 	self.model:PivotTo(self.initialPivot)
 	self.humanoid.Health = self.humanoid.MaxHealth

@@ -73,12 +73,12 @@ local presenter = StoryPresenter.new({
 
 gui.setReadyHandler(function()
 	ContentAudio.playUiClick()
-	remotes:request("RoleReady", { ready = true })
+	remotes:request("RoleReady")
 end)
 
 gui.setReviveHandler(function(accepted: boolean)
 	ContentAudio.playUiClick()
-	remotes:request("ReviveConfirmed", { accepted = accepted })
+	remotes:request("ReviveConfirmed", accepted)
 	if not accepted then
 		gui.showRevive(true)
 	else
@@ -89,7 +89,7 @@ end)
 gui.setReplayHandler(function()
 	ContentAudio.playUiClick()
 	presenter:resetForReplay()
-	remotes:request("ReplayRequested", { source = "credits" })
+	remotes:request("ReplayRequested")
 end)
 
 gui.setLeaveHandler(function()
@@ -102,7 +102,7 @@ remotes:on("StoryCue", function(payload: any)
 end)
 
 remotes:on("ObjectiveUpdate", function(payload: any)
-	local text = if typeof(payload) == "table" then payload.text else payload
+	local text = if typeof(payload) == "table" then payload.objective else payload
 	if typeof(text) == "string" then
 		gui.setObjective(text)
 	end
@@ -120,13 +120,13 @@ remotes:on("RoleUpdate", function(payload: any)
 end)
 
 remotes:on("AdminDiagnostics", function(payload: any)
-	local text = if typeof(payload) == "table" then payload.text else tostring(payload)
+	local text = if typeof(payload) == "table" then payload.message else tostring(payload)
 	gui.showAdminDiagnostics(true, text)
 end)
 
 local remotesReady = remotes:start(12)
 if not remotesReady then
-	gui.setObjective("Waiting for systems remotesâ€¦")
+	gui.setObjective("Waiting for systems remotes...")
 end
 
 local created = ContentPackage.PlaceholderMount.mountMissingMarkers()

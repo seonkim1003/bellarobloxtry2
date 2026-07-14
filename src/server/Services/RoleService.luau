@@ -10,15 +10,18 @@ local Config = require(GameShared:WaitForChild("SystemsConfig"))
 local RoleService = {}
 RoleService.__index = RoleService
 
-export type RoleService = typeof(setmetatable({} :: {
-	remotes: {[string]: RemoteEvent},
-	records: {[Player]: {role: string, joinedAt: number, ready: boolean}},
-	protagonist: Player?,
-	roleChanged: BindableEvent,
-	started: boolean,
-}, RoleService))
+export type RoleService = typeof(setmetatable(
+	{} :: {
+		remotes: { [string]: RemoteEvent },
+		records: { [Player]: { role: string, joinedAt: number, ready: boolean } },
+		protagonist: Player?,
+		roleChanged: BindableEvent,
+		started: boolean,
+	},
+	RoleService
+))
 
-function RoleService.new(remotes: {[string]: RemoteEvent}): RoleService
+function RoleService.new(remotes: { [string]: RemoteEvent }): RoleService
 	return setmetatable({
 		remotes = remotes,
 		records = {},
@@ -28,7 +31,7 @@ function RoleService.new(remotes: {[string]: RemoteEvent}): RoleService
 	}, RoleService)
 end
 
-function RoleService:_send(player: Player)
+function RoleService._send(self: RoleService, player: Player)
 	local record = self.records[player]
 	if record then
 		self.remotes[Contract.ServerEvents.RoleUpdate]:FireClient(player, {
@@ -38,7 +41,7 @@ function RoleService:_send(player: Player)
 	end
 end
 
-function RoleService:_assign(player: Player, role: string): boolean
+function RoleService._assign(self: RoleService, player: Player, role: string): boolean
 	local record = self.records[player]
 	if not record or player.Parent ~= Players then
 		return false
@@ -64,7 +67,7 @@ function RoleService:_assign(player: Player, role: string): boolean
 	return true
 end
 
-function RoleService:_promoteNextCandidate()
+function RoleService._promoteNextCandidate(self: RoleService)
 	if self.protagonist then
 		return
 	end
@@ -72,7 +75,8 @@ function RoleService:_promoteNextCandidate()
 	local candidate: Player? = nil
 	local oldestJoin = math.huge
 	for player, record in self.records do
-		if record.role == Contract.Roles.Unassigned
+		if
+			record.role == Contract.Roles.Unassigned
 			and now - record.joinedAt >= Config.Roles.ClaimDelaySeconds
 			and record.joinedAt < oldestJoin
 		then
@@ -85,7 +89,7 @@ function RoleService:_promoteNextCandidate()
 	end
 end
 
-function RoleService:_considerProtagonist(player: Player)
+function RoleService._considerProtagonist(self: RoleService, player: Player)
 	local record = self.records[player]
 	if not record or record.role ~= Contract.Roles.Unassigned then
 		return
@@ -95,7 +99,7 @@ function RoleService:_considerProtagonist(player: Player)
 	end
 end
 
-function RoleService:_onPlayerAdded(player: Player)
+function RoleService._onPlayerAdded(self: RoleService, player: Player)
 	self.records[player] = {
 		role = Contract.Roles.Unassigned,
 		joinedAt = os.clock(),
@@ -120,7 +124,7 @@ function RoleService:_onPlayerAdded(player: Player)
 	end)
 end
 
-function RoleService:_onPlayerRemoving(player: Player)
+function RoleService._onPlayerRemoving(self: RoleService, player: Player)
 	local record = self.records[player]
 	local previousRole = if record then record.role else Contract.Roles.Unassigned
 	if self.protagonist == player then
@@ -135,7 +139,7 @@ function RoleService:_onPlayerRemoving(player: Player)
 	end
 end
 
-function RoleService:Start()
+function RoleService.Start(self: RoleService)
 	if self.started then
 		return
 	end
@@ -159,7 +163,7 @@ function RoleService:Start()
 	end
 end
 
-function RoleService:MarkReady(player: Player)
+function RoleService.MarkReady(self: RoleService, player: Player)
 	local record = self.records[player]
 	if not record then
 		return
@@ -170,20 +174,23 @@ function RoleService:MarkReady(player: Player)
 	self:_send(player)
 end
 
-function RoleService:PromoteToAdmin(player: Player): boolean
+function RoleService.PromoteToAdmin(self: RoleService, player: Player): boolean
 	return self:_assign(player, Contract.Roles.Admin)
 end
 
-function RoleService:GetRole(player: Player): string
+function RoleService.GetRole(self: RoleService, player: Player): string
 	local record = self.records[player]
 	return if record then record.role else Contract.Roles.Unassigned
 end
 
-function RoleService:GetProtagonist(): Player?
+function RoleService.GetProtagonist(self: RoleService): Player?
 	return self.protagonist
 end
 
-function RoleService:ObserveRoleChanged(callback: (Player, string, string) -> ()): RBXScriptConnection
+function RoleService.ObserveRoleChanged(
+	self: RoleService,
+	callback: (Player, string, string) -> ()
+): RBXScriptConnection
 	return self.roleChanged.Event:Connect(callback)
 end
 

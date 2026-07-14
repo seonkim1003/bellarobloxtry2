@@ -7,7 +7,7 @@
       "tags": ["SceneSpawn"],
       "attributes": {
         "MarkerId": "TowerBase",
-        "SceneId": "Tower"
+        "SceneId": "TowerBase"
       },
       "properties": {
         "Anchored": true,
@@ -94,6 +94,41 @@
         "Color": [0.9, 0.6, 0.7],
         "Material": "Neon",
         "Transparency": 0.35
+      }
+    },
+    {
+      "name": "TowerTopTrigger",
+      "className": "Part",
+      "tags": ["StoryTrigger"],
+      "attributes": {
+        "MarkerId": "TowerTop",
+        "SceneId": "Tower"
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [4, 4, 4],
+        "CFrame": [1,0,0, 0,1,0, 0,0,1, 149,23,24],
+        "Color": [0.9,0.6,0.7],
+        "Material": "Neon",
+        "Transparency": 0.65
+      }
+    },
+    {
+      "name": "CorruptionPulseMarker",
+      "className": "Part",
+      "tags": ["CinematicMarker"],
+      "attributes": {
+        "MarkerId": "CorruptionPulse",
+        "SceneId": "Tower",
+        "SequenceIndex": 2
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2,2,2],
+        "CFrame": [1,0,0, 0,1,0, 0,0,1, 149,23,22],
+        "Transparency": 1
       }
     },
     {

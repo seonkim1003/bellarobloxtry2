@@ -23,7 +23,7 @@ local cinematicTransitions = {
 }
 
 function GameplayService.new(
-	remotes: {[string]: RemoteEvent},
+	remotes: { [string]: RemoteEvent },
 	validator: any,
 	roleService: any,
 	storyService: any,
@@ -41,43 +41,69 @@ function GameplayService.new(
 		friendlyRambo = friendlyRambo,
 		bella = bella,
 		evilRambo = evilRambo,
-		fragments = {} :: {[string]: boolean},
+		fragments = {} :: { [string]: boolean },
 		fragmentCount = 0,
-		bound = {} :: {[Instance]: boolean},
-		promptBound = {} :: {[Instance]: boolean},
-		fragmentPrompts = {} :: {[Instance]: ProximityPrompt},
+		bound = {} :: { [Instance]: boolean },
+		promptBound = {} :: { [Instance]: boolean },
+		fragmentPrompts = {} :: { [Instance]: ProximityPrompt },
 	}, GameplayService)
 end
 
-function GameplayService:_isProtagonist(player: Player): boolean
+function GameplayService._isProtagonist(self: any, player: Player): boolean
 	return self.validator.HasRole(self.roleService, player, Contract.Roles.Protagonist)
 end
 
-function GameplayService:_playerFromHit(hit: BasePart): Player?
+function GameplayService._playerFromHit(_self: any, hit: BasePart): Player?
 	local model = hit:FindFirstAncestorOfClass("Model")
 	return if model then Players:GetPlayerFromCharacter(model) else nil
 end
 
-function GameplayService:_fireObjective(player: Player, objective: string)
+function GameplayService._fireObjective(self: any, player: Player, objective: string)
 	self.remotes[Contract.ServerEvents.ObjectiveUpdate]:FireClient(player, {
 		state = self.storyService:GetState(),
 		objective = objective,
 	})
 end
 
-function GameplayService:_onCatch(player: Player, npcType: string)
+function GameplayService._onCatch(self: any, player: Player, npcType: string)
 	if not self:_isProtagonist(player) then
 		return
 	end
-	local expectedState = if npcType == "Bella" then Contract.States.BellaChase else Contract.States.FieldHunt
+	local expectedState = if npcType == "Bella"
+		then Contract.States.BellaChase
+		else Contract.States.FieldHunt
 	if not self.validator.IsStoryState(self.storyService, expectedState) then
 		return
 	end
+	if npcType == "EvilRambo" then
+		self.remotes[Contract.ServerEvents.FragmentUpdate]:FireClient(player, {
+			count = self.fragmentCount,
+			total = Config.Story.FragmentCount,
+			caught = true,
+		})
+	end
 	self.checkpoints:Respawn(player)
-	self:_fireObjective(player, if npcType == "Bella" then "Escape Bella" else "Find the letter fragments")
+	self:_fireObjective(
+		player,
+		if npcType == "Bella" then "Escape Bella" else "Find the letter fragments"
+	)
 end
 
-function GameplayService:_bindTouched(instance: Instance, callback: (Player) -> ())
+function GameplayService._onDetected(self: any, player: Player, npcType: string)
+	if
+		npcType == "EvilRambo"
+		and self:_isProtagonist(player)
+		and self.validator.IsStoryState(self.storyService, Contract.States.FieldHunt)
+	then
+		self.remotes[Contract.ServerEvents.FragmentUpdate]:FireClient(player, {
+			count = self.fragmentCount,
+			total = Config.Story.FragmentCount,
+			detected = true,
+		})
+	end
+end
+
+function GameplayService._bindTouched(self: any, instance: Instance, callback: (Player) -> ())
 	if self.bound[instance] or not instance:IsA("BasePart") then
 		return
 	end
@@ -90,30 +116,39 @@ function GameplayService:_bindTouched(instance: Instance, callback: (Player) -> 
 	end)
 end
 
-function GameplayService:_bindPrompt(instance: Instance, actionText: string, callback: (Player) -> ()): ProximityPrompt?
+function GameplayService._bindPrompt(
+	self: any,
+	instance: Instance,
+	actionText: string,
+	callback: (Player) -> ()
+): ProximityPrompt?
 	if self.promptBound[instance] then
 		return nil
 	end
 	local foundPrompt = instance:FindFirstChildWhichIsA("ProximityPrompt", true)
-	local prompt: ProximityPrompt? = if foundPrompt and foundPrompt:IsA("ProximityPrompt") then foundPrompt else nil
+	local prompt: ProximityPrompt? = if foundPrompt and foundPrompt:IsA("ProximityPrompt")
+		then foundPrompt
+		else nil
 	if not prompt then
 		local attachmentParent: Instance? = nil
 		if instance:IsA("BasePart") then
 			attachmentParent = instance
 		elseif instance:IsA("Model") then
-			attachmentParent = instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart", true)
+			attachmentParent = instance.PrimaryPart
+				or instance:FindFirstChildWhichIsA("BasePart", true)
 		end
 		if not attachmentParent then
 			warn(`Cannot create ProximityPrompt for {instance:GetFullName()}`)
 			return nil
 		end
-		prompt = Instance.new("ProximityPrompt")
-		prompt.Name = "GameInteractionPrompt"
-		prompt.ActionText = actionText
-		prompt.ObjectText = ""
-		prompt.RequiresLineOfSight = false
-		prompt.HoldDuration = 0
-		prompt.Parent = attachmentParent
+		local newPrompt = Instance.new("ProximityPrompt")
+		newPrompt.Name = "GameInteractionPrompt"
+		newPrompt.ActionText = actionText
+		newPrompt.ObjectText = ""
+		newPrompt.RequiresLineOfSight = false
+		newPrompt.HoldDuration = 0
+		newPrompt.Parent = attachmentParent
+		prompt = newPrompt
 	end
 	if not prompt then
 		return nil
@@ -126,10 +161,15 @@ function GameplayService:_bindPrompt(instance: Instance, actionText: string, cal
 	return prompt
 end
 
-function GameplayService:_bindMazeExit(instance: Instance)
+function GameplayService._bindMazeExit(self: any, instance: Instance)
 	self:_bindTouched(instance, function(player)
-		if self:_isProtagonist(player)
-			and self.validator.IsNear(player, instance, Config.Validation.DefaultInteractionDistance)
+		if
+			self:_isProtagonist(player)
+			and self.validator.IsNear(
+				player,
+				instance,
+				Config.Validation.DefaultInteractionDistance
+			)
 			and self.validator.IsStoryState(self.storyService, Contract.States.BellaChase)
 			and self.validator:ConsumeOnce(`MazeExit:{self.storyService:GetRevision()}`)
 		then
@@ -138,13 +178,18 @@ function GameplayService:_bindMazeExit(instance: Instance)
 	end)
 end
 
-function GameplayService:_bindStoryTrigger(instance: Instance)
+function GameplayService._bindStoryTrigger(self: any, instance: Instance)
+	if instance:GetAttribute(Contract.Attributes.MarkerId) ~= "TowerTop" then
+		return
+	end
 	self:_bindPrompt(instance, "Reach the token", function(player)
-		if instance:GetAttribute(Contract.Attributes.MarkerId) ~= "TowerTop" then
-			return
-		end
-		if self:_isProtagonist(player)
-			and self.validator.IsNear(player, instance, Config.Validation.DefaultInteractionDistance)
+		if
+			self:_isProtagonist(player)
+			and self.validator.IsNear(
+				player,
+				instance,
+				Config.Validation.DefaultInteractionDistance
+			)
 			and self.validator.IsStoryState(self.storyService, Contract.States.TowerClimb)
 		then
 			self.storyService:Transition(Contract.States.RevivePrompt, "TowerTopReached")
@@ -152,10 +197,15 @@ function GameplayService:_bindStoryTrigger(instance: Instance)
 	end)
 end
 
-function GameplayService:_bindFragment(instance: Instance)
+function GameplayService._bindFragment(self: any, instance: Instance)
 	local prompt = self:_bindPrompt(instance, "Collect fragment", function(player)
-		if not self:_isProtagonist(player)
-			or not self.validator.IsNear(player, instance, Config.Validation.DefaultInteractionDistance)
+		if
+			not self:_isProtagonist(player)
+			or not self.validator.IsNear(
+				player,
+				instance,
+				Config.Validation.DefaultInteractionDistance
+			)
 			or not self.validator.IsStoryState(self.storyService, Contract.States.FieldHunt)
 		then
 			return
@@ -186,8 +236,26 @@ function GameplayService:_bindFragment(instance: Instance)
 	end
 end
 
-function GameplayService:_onStateChanged(state: string)
-	self.friendlyRambo:SetActive(state == Contract.States.MazeIntro or state == Contract.States.BellaChase)
+function GameplayService._movePlayerToScene(self: any, player: Player, sceneId: string)
+	if self.checkpoints:Set(player, sceneId) then
+		if not self.checkpoints:Respawn(player) then
+			task.spawn(function()
+				player.CharacterAdded:Wait()
+				if self:_isProtagonist(player) then
+					self.checkpoints:Respawn(player)
+				end
+			end)
+		end
+	else
+		warn(`Unable to move protagonist to missing SceneSpawn {sceneId}`)
+		self.checkpoints:SetCurrent(player)
+	end
+end
+
+function GameplayService._onStateChanged(self: any, state: string)
+	self.friendlyRambo:SetActive(
+		state == Contract.States.MazeIntro or state == Contract.States.BellaChase
+	)
 	self.bella:SetActive(state == Contract.States.BellaChase)
 	self.evilRambo:SetActive(state == Contract.States.FieldHunt)
 	if state == Contract.States.RoleLobby then
@@ -211,24 +279,24 @@ function GameplayService:_onStateChanged(state: string)
 		return
 	end
 	if state == Contract.States.MazeIntro then
-		if not self.checkpoints:Set(player, Config.Story.MazeCheckpointSceneId) then
-			self.checkpoints:SetCurrent(player)
-		end
+		self:_movePlayerToScene(player, Config.Story.MazeCheckpointSceneId)
+	elseif state == Contract.States.GuideEncounter then
+		self:_movePlayerToScene(player, Config.Story.TowerCheckpointSceneId)
 	elseif state == Contract.States.FieldHunt then
-		if not self.checkpoints:Set(player, Config.Story.FieldCheckpointSceneId) then
-			self.checkpoints:SetCurrent(player)
-		end
+		self:_movePlayerToScene(player, Config.Story.FieldCheckpointSceneId)
+	elseif state == Contract.States.Epilogue then
+		self:_movePlayerToScene(player, Config.Story.EpilogueCheckpointSceneId)
 	end
 end
 
-function GameplayService:_resetRun(player: Player?)
+function GameplayService._resetRun(self: any, player: Player?)
 	self.storyService:ResetToLobby("Replay")
 	if player and self:_isProtagonist(player) then
 		self.storyService:StartFor(player)
 	end
 end
 
-function GameplayService:Start()
+function GameplayService.Start(self: any)
 	for _, instance in CollectionService:GetTagged(Contract.Tags.MazeExit) do
 		self:_bindMazeExit(instance)
 	end
@@ -244,49 +312,58 @@ function GameplayService:Start()
 	CollectionService:GetInstanceAddedSignal(Contract.Tags.StoryTrigger):Connect(function(instance)
 		self:_bindStoryTrigger(instance)
 	end)
-	CollectionService:GetInstanceAddedSignal(Contract.Tags.LetterFragment):Connect(function(instance)
-		self:_bindFragment(instance)
-	end)
+	CollectionService:GetInstanceAddedSignal(Contract.Tags.LetterFragment)
+		:Connect(function(instance)
+			self:_bindFragment(instance)
+		end)
 
 	self.storyService:ObserveChanged(function(state)
 		self:_onStateChanged(state)
 	end)
 
-	self.remotes[Contract.ClientEvents.CinematicFinished].OnServerEvent:Connect(function(player, cueId)
-		if not self:_isProtagonist(player) or typeof(cueId) ~= "string" then
-			return
+	self.remotes[Contract.ClientEvents.CinematicFinished].OnServerEvent:Connect(
+		function(player, cueId)
+			if not self:_isProtagonist(player) or typeof(cueId) ~= "string" then
+				return
+			end
+			if not self.validator:AllowRate(player, "CinematicFinished", 4, 2) then
+				return
+			end
+			local transition = cinematicTransitions[self.storyService:GetState()]
+			if transition and transition.cue == cueId then
+				self.storyService:Transition(transition.next, `Cinematic:{cueId}`)
+			end
 		end
-		if not self.validator:AllowRate(player, "CinematicFinished", 4, 2) then
-			return
-		end
-		local transition = cinematicTransitions[self.storyService:GetState()]
-		if transition and transition.cue == cueId then
-			self.storyService:Transition(transition.next, `Cinematic:{cueId}`)
-		end
-	end)
+	)
 
-	self.remotes[Contract.ClientEvents.ReviveConfirmed].OnServerEvent:Connect(function(player, confirmed)
-		if not self:_isProtagonist(player)
-			or typeof(confirmed) ~= "boolean"
-			or not self.validator.IsStoryState(self.storyService, Contract.States.RevivePrompt)
-			or not self.validator:AllowRate(
-				player,
-				Contract.ClientEvents.ReviveConfirmed,
-				Config.Validation.RemoteBurstLimit,
-				Config.Validation.RemoteWindowSeconds
-			)
-		then
-			return
+	self.remotes[Contract.ClientEvents.ReviveConfirmed].OnServerEvent:Connect(
+		function(player, confirmed)
+			if
+				not self:_isProtagonist(player)
+				or typeof(confirmed) ~= "boolean"
+				or not self.validator.IsStoryState(self.storyService, Contract.States.RevivePrompt)
+				or not self.validator:AllowRate(
+					player,
+					Contract.ClientEvents.ReviveConfirmed,
+					Config.Validation.RemoteBurstLimit,
+					Config.Validation.RemoteWindowSeconds
+				)
+			then
+				return
+			end
+			if
+				confirmed and self.validator:ConsumeOnce(`Revive:{self.storyService:GetRevision()}`)
+			then
+				self.storyService:Transition(Contract.States.Corruption, "ReviveConfirmed")
+			else
+				self:_fireObjective(player, "Choose Revive to continue")
+			end
 		end
-		if confirmed and self.validator:ConsumeOnce(`Revive:{self.storyService:GetRevision()}`) then
-			self.storyService:Transition(Contract.States.Corruption, "ReviveConfirmed")
-		else
-			self:_fireObjective(player, "Choose Revive to continue")
-		end
-	end)
+	)
 
 	self.remotes[Contract.ClientEvents.ReplayRequested].OnServerEvent:Connect(function(player)
-		if self:_isProtagonist(player)
+		if
+			self:_isProtagonist(player)
 			and self.validator.IsStoryState(self.storyService, Contract.States.Credits)
 			and self.validator:AllowRate(player, Contract.ClientEvents.ReplayRequested, 1, 2)
 		then

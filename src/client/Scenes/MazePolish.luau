@@ -22,6 +22,9 @@ function MazePolish.ensureReadableShell()
 	if maze:FindFirstChild("ContentFogWalls") then
 		return
 	end
+	if maze:FindFirstChild("MazeWall1") then
+		return
+	end
 
 	local folder = Instance.new("Folder")
 	folder.Name = "ContentFogWalls"
@@ -37,7 +40,7 @@ function MazePolish.ensureReadableShell()
 
 	local spawnPart: BasePart? = nil
 	for _, tagged in CollectionService:GetTagged("SceneSpawn") do
-		if tagged:IsA("BasePart") and tagged:GetAttribute("SceneId") == "Maze" then
+		if tagged:IsA("BasePart") and tagged:GetAttribute("SceneId") == "MazeCheckpoint" then
 			spawnPart = tagged
 			break
 		end

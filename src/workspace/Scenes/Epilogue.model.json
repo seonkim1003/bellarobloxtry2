@@ -7,7 +7,7 @@
       "tags": ["SceneSpawn"],
       "attributes": {
         "MarkerId": "EpilogueSeat",
-        "SceneId": "Epilogue"
+        "SceneId": "EpilogueSeat"
       },
       "properties": {
         "Anchored": true,
@@ -46,6 +46,23 @@
         "Color": [0.95, 0.9, 0.8],
         "Material": "Neon",
         "Transparency": 0.35
+      }
+    },
+    {
+      "name": "EpilogueTableMarker",
+      "className": "Part",
+      "tags": ["CinematicMarker"],
+      "attributes": {
+        "MarkerId": "EpilogueTable",
+        "SceneId": "Epilogue",
+        "SequenceIndex": 1
+      },
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "Size": [2,2,2],
+        "CFrame": [1,0,0, 0,1,0, 0,0,1, 322,2,0],
+        "Transparency": 1
       }
     },
     {

@@ -10,7 +10,7 @@ local RemoteRegistry = {}
 local function getOrCreateEvent(folder: Folder, name: string): RemoteEvent
 	local existing = folder:FindFirstChild(name)
 	if existing then
-		assert(existing:IsA("RemoteEvent"), (`Remote {name} must be a RemoteEvent`))
+		assert(existing:IsA("RemoteEvent"), `Remote {name} must be a RemoteEvent`)
 		return existing
 	end
 
@@ -20,7 +20,7 @@ local function getOrCreateEvent(folder: Folder, name: string): RemoteEvent
 	return event
 end
 
-function RemoteRegistry.Create(): {[string]: RemoteEvent}
+function RemoteRegistry.Create(): { [string]: RemoteEvent }
 	local folder = ReplicatedStorage:FindFirstChild("GameRemotes")
 	if not folder then
 		folder = Instance.new("Folder")
@@ -29,12 +29,14 @@ function RemoteRegistry.Create(): {[string]: RemoteEvent}
 	end
 	assert(folder:IsA("Folder"), "ReplicatedStorage.GameRemotes must be a Folder")
 
-	local remotes: {[string]: RemoteEvent} = {}
+	local remotes: { [string]: RemoteEvent } = {}
 	for _, name in Contract.ServerEvents do
-		remotes[name] = getOrCreateEvent(folder, name)
+		local remoteName = name :: string
+		remotes[remoteName] = getOrCreateEvent(folder, remoteName)
 	end
 	for _, name in Contract.ClientEvents do
-		remotes[name] = getOrCreateEvent(folder, name)
+		local remoteName = name :: string
+		remotes[remoteName] = getOrCreateEvent(folder, remoteName)
 	end
 
 	return table.freeze(remotes)

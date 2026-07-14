@@ -22,10 +22,13 @@ function FriendlyRamboService.new(roleService: any)
 	}, FriendlyRamboService)
 end
 
-function FriendlyRamboService:_discover()
+function FriendlyRamboService._discover(self: any)
 	if not self.agent then
 		for _, candidate in CollectionService:GetTagged(Contract.Tags.NPCSpawn) do
-			if candidate:GetAttribute(Contract.Attributes.NPCType) == "FriendlyRambo" and candidate:IsA("Model") then
+			if
+				candidate:GetAttribute(Contract.Attributes.NPCType) == "FriendlyRambo"
+				and candidate:IsA("Model")
+			then
 				self.agent = PathAgent.new(candidate)
 				break
 			end
@@ -38,7 +41,8 @@ function FriendlyRamboService:_discover()
 		end
 	end
 	table.sort(markers, function(a, b)
-		return (a:GetAttribute(Contract.Attributes.SequenceIndex) or 0) < (b:GetAttribute(Contract.Attributes.SequenceIndex) or 0)
+		return (a:GetAttribute(Contract.Attributes.SequenceIndex) or 0)
+			< (b:GetAttribute(Contract.Attributes.SequenceIndex) or 0)
 	end)
 	self.markers = markers
 end
@@ -52,7 +56,7 @@ local function positionOf(instance: Instance): Vector3?
 	return nil
 end
 
-function FriendlyRamboService:Start()
+function FriendlyRamboService.Start(self: any)
 	self:_discover()
 	CollectionService:GetInstanceAddedSignal(Contract.Tags.NPCSpawn):Connect(function()
 		self:_discover()
@@ -70,7 +74,9 @@ function FriendlyRamboService:Start()
 		end
 		self.elapsed = 0
 		local player = self.roleService:GetProtagonist()
-		local root = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local root = player
+			and player.Character
+			and player.Character:FindFirstChild("HumanoidRootPart")
 		local marker = self.markers[self.markerIndex]
 		local destination = marker and positionOf(marker)
 		if not root or not root:IsA("BasePart") or not destination then
@@ -82,20 +88,23 @@ function FriendlyRamboService:Start()
 			return
 		end
 		self.agent:MoveTo(destination)
-		if (self.agent.root.Position - destination).Magnitude < 6 and (root.Position - destination).Magnitude < 12 then
+		if
+			(self.agent.root.Position - destination).Magnitude < 6
+			and (root.Position - destination).Magnitude < 12
+		then
 			self.markerIndex = math.min(self.markerIndex + 1, #self.markers)
 		end
 	end)
 end
 
-function FriendlyRamboService:SetActive(active: boolean)
+function FriendlyRamboService.SetActive(self: any, active: boolean)
 	self.active = active
 	if not active and self.agent then
 		self.agent:Cancel()
 	end
 end
 
-function FriendlyRamboService:Reset()
+function FriendlyRamboService.Reset(self: any)
 	self.active = false
 	self.markerIndex = 1
 	if self.agent then

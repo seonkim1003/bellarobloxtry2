@@ -5,10 +5,13 @@ local Players = game:GetService("Players")
 local Validation = {}
 Validation.__index = Validation
 
-export type Validator = typeof(setmetatable({} :: {
-	consumed: {[string]: boolean},
-	rateBuckets: {[Player]: {[string]: {startedAt: number, count: number}}},
-}, Validation))
+export type Validator = typeof(setmetatable(
+	{} :: {
+		consumed: { [string]: boolean },
+		rateBuckets: { [Player]: { [string]: { startedAt: number, count: number } } },
+	},
+	Validation
+))
 
 function Validation.new(): Validator
 	return setmetatable({
@@ -46,7 +49,7 @@ function Validation.IsNear(player: Player, target: Instance, maximumDistance: nu
 	return targetPosition ~= nil and (root.Position - targetPosition).Magnitude <= maximumDistance
 end
 
-function Validation:ConsumeOnce(key: string): boolean
+function Validation.ConsumeOnce(self: Validator, key: string): boolean
 	if self.consumed[key] then
 		return false
 	end
@@ -54,7 +57,7 @@ function Validation:ConsumeOnce(key: string): boolean
 	return true
 end
 
-function Validation:ClearConsumed(prefix: string?)
+function Validation.ClearConsumed(self: Validator, prefix: string?)
 	if prefix == nil then
 		table.clear(self.consumed)
 		return
@@ -66,7 +69,13 @@ function Validation:ClearConsumed(prefix: string?)
 	end
 end
 
-function Validation:AllowRate(player: Player, action: string, limit: number, windowSeconds: number): boolean
+function Validation.AllowRate(
+	self: Validator,
+	player: Player,
+	action: string,
+	limit: number,
+	windowSeconds: number
+): boolean
 	local now = os.clock()
 	local playerBuckets = self.rateBuckets[player]
 	if not playerBuckets then
@@ -87,7 +96,7 @@ function Validation:AllowRate(player: Player, action: string, limit: number, win
 	return true
 end
 
-function Validation:ForgetPlayer(player: Player)
+function Validation.ForgetPlayer(self: Validator, player: Player)
 	self.rateBuckets[player] = nil
 end
 

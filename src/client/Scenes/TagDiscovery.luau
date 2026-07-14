@@ -51,7 +51,7 @@ end
 
 function TagDiscovery.printReport(report: DiscoveryReport)
 	print(
-		`[Content] Scenes={table.concat(report.scenesFound, ",")} markersâ‰ˆ{report.markerCount} missingTags={#report.missingTags}`
+		`[Content] Scenes={table.concat(report.scenesFound, ",")} markers~{report.markerCount} missingTags={#report.missingTags}`
 	)
 	for tag, count in report.tagCounts do
 		print(`[Content] tag {tag} = {count}`)

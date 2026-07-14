@@ -12,12 +12,19 @@ local PathAgent = require(script.Parent:WaitForChild("PathAgent"))
 local HostileNpcService = {}
 HostileNpcService.__index = HostileNpcService
 
-function HostileNpcService.new(roleService: any, npcType: string, settings: any, onCaught: (Player, string) -> ())
+function HostileNpcService.new(
+	roleService: any,
+	npcType: string,
+	settings: any,
+	onCaught: (Player, string) -> (),
+	onDetected: ((Player, string) -> ())?
+)
 	return setmetatable({
 		roleService = roleService,
 		npcType = npcType,
 		settings = settings,
 		onCaught = onCaught,
+		onDetected = onDetected,
 		agent = nil,
 		active = false,
 		chasing = npcType == "Bella",
@@ -38,7 +45,7 @@ local function positionOf(instance: Instance): Vector3?
 	return nil
 end
 
-function HostileNpcService:_tryAttach(candidate: Instance)
+function HostileNpcService._tryAttach(self: any, candidate: Instance)
 	if self.agent or not candidate:IsA("Model") then
 		return
 	end
@@ -51,7 +58,7 @@ function HostileNpcService:_tryAttach(candidate: Instance)
 	end
 end
 
-function HostileNpcService:_discover()
+function HostileNpcService._discover(self: any)
 	for _, candidate in CollectionService:GetTagged(Contract.Tags.NPCSpawn) do
 		self:_tryAttach(candidate)
 	end
@@ -62,23 +69,28 @@ function HostileNpcService:_discover()
 		end
 	end
 	table.sort(points, function(a, b)
-		return (a:GetAttribute(Contract.Attributes.SequenceIndex) or 0) < (b:GetAttribute(Contract.Attributes.SequenceIndex) or 0)
+		return (a:GetAttribute(Contract.Attributes.SequenceIndex) or 0)
+			< (b:GetAttribute(Contract.Attributes.SequenceIndex) or 0)
 	end)
 	self.patrolPoints = points
 end
 
-function HostileNpcService:_canSee(character: Model, targetRoot: BasePart): boolean
+function HostileNpcService._canSee(self: any, character: Model, targetRoot: BasePart): boolean
 	if not self.agent then
 		return false
 	end
 	local parameters = RaycastParams.new()
 	parameters.FilterType = Enum.RaycastFilterType.Exclude
 	parameters.FilterDescendantsInstances = { self.agent.model }
-	local result = workspace:Raycast(self.agent.root.Position, targetRoot.Position - self.agent.root.Position, parameters)
+	local result = workspace:Raycast(
+		self.agent.root.Position,
+		targetRoot.Position - self.agent.root.Position,
+		parameters
+	)
 	return result == nil or result.Instance:IsDescendantOf(character)
 end
 
-function HostileNpcService:_patrol()
+function HostileNpcService._patrol(self: any)
 	if not self.agent or #self.patrolPoints == 0 then
 		return
 	end
@@ -93,7 +105,7 @@ function HostileNpcService:_patrol()
 	end
 end
 
-function HostileNpcService:_step()
+function HostileNpcService._step(self: any)
 	if not self.active or not self.agent then
 		return
 	end
@@ -114,12 +126,17 @@ function HostileNpcService:_step()
 		return
 	end
 
+	local wasChasing = self.chasing
 	if self.npcType == "Bella" then
 		self.chasing = true
 	elseif self.chasing then
 		self.chasing = distance <= self.settings.DisengageDistance
 	else
-		self.chasing = distance <= self.settings.DetectionDistance and self:_canSee(character, targetRoot)
+		self.chasing = distance <= self.settings.DetectionDistance
+			and self:_canSee(character, targetRoot)
+	end
+	if not wasChasing and self.chasing and self.onDetected then
+		self.onDetected(player, self.npcType)
 	end
 
 	if self.chasing then
@@ -129,7 +146,7 @@ function HostileNpcService:_step()
 	end
 end
 
-function HostileNpcService:Start()
+function HostileNpcService.Start(self: any)
 	self:_discover()
 	CollectionService:GetInstanceAddedSignal(Contract.Tags.NPCSpawn):Connect(function(candidate)
 		self:_tryAttach(candidate)
@@ -146,14 +163,14 @@ function HostileNpcService:Start()
 	end)
 end
 
-function HostileNpcService:SetActive(active: boolean)
+function HostileNpcService.SetActive(self: any, active: boolean)
 	self.active = active
 	if not active and self.agent then
 		self.agent:Cancel()
 	end
 end
 
-function HostileNpcService:Reset()
+function HostileNpcService.Reset(self: any)
 	self.active = false
 	self.chasing = self.npcType == "Bella"
 	self.patrolIndex = 1

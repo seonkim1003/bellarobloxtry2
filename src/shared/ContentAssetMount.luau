@@ -13,6 +13,14 @@ local ContentConfig = require(script.Parent:WaitForChild("ContentConfig"))
 
 local ContentAssetMount = {}
 
+local function removeExecutableDescendants(instance: Instance)
+	for _, descendant in instance:GetDescendants() do
+		if descendant:IsA("LuaSourceContainer") then
+			descendant:Destroy()
+		end
+	end
+end
+
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing and existing:IsA("Folder") then
@@ -86,6 +94,7 @@ function ContentAssetMount.loadAssetModel(assetId: number, label: string): Model
 	-- Detach from LoadAsset wrapper.
 	model.Parent = nil
 	container:Destroy()
+	removeExecutableDescendants(model)
 	ensurePrimary(model)
 	return model
 end
@@ -168,10 +177,99 @@ local function storeCharacterTemplate(templates: Folder, key: string, assetId: n
 	print(`[ContentAssets] Stored character template {key} ({assetId})`)
 end
 
+local function createNpcActor(
+	template: Model,
+	cloneName: string,
+	target: CFrame,
+	npcType: string
+): Model
+	local actor = Instance.new("Model")
+	actor.Name = cloneName
+	actor:SetAttribute("NPCType", npcType)
+
+	local root = Instance.new("Part")
+	root.Name = "HumanoidRootPart"
+	root.Anchored = false
+	root.CanCollide = true
+	root.Transparency = 1
+	root.Size = Vector3.new(2, 2, 1)
+	root.CFrame = target
+	root.Parent = actor
+	actor.PrimaryPart = root
+
+	local humanoid = Instance.new("Humanoid")
+	humanoid.Name = "Humanoid"
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.Parent = actor
+
+	local visual = template:Clone()
+	visual.Name = "Visual"
+	removeExecutableDescendants(visual)
+	pivotTo(visual, target)
+	visual.Parent = actor
+
+	local visualPartCount = 0
+	for _, descendant in visual:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			visualPartCount += 1
+			descendant.Anchored = false
+			descendant.CanCollide = false
+			descendant.Massless = true
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = descendant
+			weld.Parent = descendant
+		end
+	end
+
+	if visualPartCount == 0 then
+		local fallback = Instance.new("Part")
+		fallback.Name = "FallbackVisual"
+		fallback.Shape = Enum.PartType.Ball
+		fallback.Size = Vector3.new(2.5, 2.5, 2.5)
+		fallback.Color = Color3.fromRGB(110, 90, 75)
+		fallback.Material = Enum.Material.SmoothPlastic
+		fallback.CanCollide = false
+		fallback.Massless = true
+		fallback.CFrame = target
+		fallback.Parent = actor
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = root
+		weld.Part1 = fallback
+		weld.Parent = fallback
+	end
+
+	return actor
+end
+
+local function createFallbackTemplate(templates: Folder, templateName: string): Model
+	local model = Instance.new("Model")
+	model.Name = templateName
+	local visual = Instance.new("Part")
+	visual.Name = "FallbackVisual"
+	visual.Anchored = true
+	visual.CanCollide = false
+	visual.Size = if templateName == "Bella" then Vector3.new(4, 6, 3) else Vector3.new(3, 2.5, 4)
+	visual.Color = if templateName == "Bella"
+		then Color3.fromRGB(120, 50, 55)
+		elseif templateName == "RamboEvil" then Color3.fromRGB(55, 30, 30)
+		elseif templateName == "RamboFriendly" then Color3.fromRGB(145, 105, 70)
+		else Color3.fromRGB(105, 90, 80)
+	visual.Material = Enum.Material.SmoothPlastic
+	visual.Parent = model
+	model.PrimaryPart = visual
+	model.Parent = templates
+	warn(`[ContentAssets] Using fallback visual for {templateName}`)
+	return model
+end
+
 local function spawnAtNpcTags(templates: Folder, npcType: string, templateName: string)
-	local template = templates:FindFirstChild(templateName)
-	if template == nil or not template:IsA("Model") then
-		return
+	local foundTemplate = templates:FindFirstChild(templateName)
+	local template: Model
+	if foundTemplate and foundTemplate:IsA("Model") then
+		template = foundTemplate
+	else
+		template = createFallbackTemplate(templates, templateName)
 	end
 
 	local folder = ensureFolder(Workspace, "ContentNPCs")
@@ -182,10 +280,9 @@ local function spawnAtNpcTags(templates: Folder, npcType: string, templateName: 
 			if old then
 				old:Destroy()
 			end
-			local clone = template:Clone()
-			clone.Name = cloneName
-			pivotTo(clone, tagged.CFrame)
-			clone.Parent = folder
+			local actor = createNpcActor(template, cloneName, tagged.CFrame, npcType)
+			actor.Parent = folder
+			CollectionService:AddTag(actor, "NPCSpawn")
 		end
 	end
 end
@@ -218,12 +315,6 @@ local function placeLetterFragments(templates: Folder)
 			clone.Name = name
 			pivotTo(clone, tagged.CFrame)
 			clone:SetAttribute("FragmentId", fragmentId)
-			CollectionService:AddTag(clone, "LetterFragment")
-			local promptPart = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart", true)
-			if promptPart then
-				promptPart:SetAttribute("FragmentId", fragmentId)
-				CollectionService:AddTag(promptPart, "LetterFragment")
-			end
 			-- Prefer prompting on the visual prop; keep invisible marker.
 			tagged.Transparency = 1
 			tagged.CanCollide = false
@@ -268,12 +359,17 @@ function ContentAssetMount.mountAll()
 	storeCharacterTemplate(templates, "Gigi", marketplace.characters.gigi)
 
 	spawnAtNpcTags(templates, "Bella", "Bella")
-	spawnAtNpcTags(templates, "RamboGuide", "RamboFriendly")
-	spawnAtNpcTags(templates, "RamboEvil", "RamboEvil")
+	spawnAtNpcTags(templates, "FriendlyRambo", "RamboFriendly")
+	spawnAtNpcTags(templates, "EvilRambo", "RamboEvil")
 	spawnAtNpcTags(templates, "RobberPatterinson", "RobberPatterinson")
 	spawnAtNpcTags(templates, "Gigi", "Gigi")
 
 	placeLetterFragments(templates)
+	for _, step in CollectionService:GetTagged("ASMRStep") do
+		if step:IsA("BasePart") then
+			step.CanCollide = true
+		end
+	end
 
 	templates:SetAttribute("Ready", true)
 	print("[ContentAssets] Mount complete")

@@ -33,12 +33,31 @@ local bella = HostileNpcService.new(roles, "Bella", Config.NPC.Bella, function(p
 		gameplay:_onCatch(player, npcType)
 	end
 end)
-local evilRambo = HostileNpcService.new(roles, "EvilRambo", Config.NPC.EvilRambo, function(player, npcType)
-	if gameplay then
-		gameplay:_onCatch(player, npcType)
+local evilRambo = HostileNpcService.new(
+	roles,
+	"EvilRambo",
+	Config.NPC.EvilRambo,
+	function(player, npcType)
+		if gameplay then
+			gameplay:_onCatch(player, npcType)
+		end
+	end,
+	function(player, npcType)
+		if gameplay then
+			gameplay:_onDetected(player, npcType)
+		end
 	end
-end)
-gameplay = GameplayService.new(remotes, validator, roles, story, checkpoints, friendlyRambo, bella, evilRambo)
+)
+gameplay = GameplayService.new(
+	remotes,
+	validator,
+	roles,
+	story,
+	checkpoints,
+	friendlyRambo,
+	bella,
+	evilRambo
+)
 local admin = AdminService.new(remotes, validator, roles, story)
 
 roles:ObserveRoleChanged(function(player, role, previousRole)
@@ -50,12 +69,14 @@ roles:ObserveRoleChanged(function(player, role, previousRole)
 end)
 
 remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player)
-	if not validator:AllowRate(
-		player,
-		Contract.ClientEvents.RoleReady,
-		Config.Validation.RemoteBurstLimit,
-		Config.Validation.RemoteWindowSeconds
-	) then
+	if
+		not validator:AllowRate(
+			player,
+			Contract.ClientEvents.RoleReady,
+			Config.Validation.RemoteBurstLimit,
+			Config.Validation.RemoteWindowSeconds
+		)
+	then
 		return
 	end
 	roles:MarkReady(player)
@@ -66,12 +87,12 @@ Players.PlayerRemoving:Connect(function(player)
 	validator:ForgetPlayer(player)
 end)
 
-roles:Start()
 friendlyRambo:Start()
 bella:Start()
 evilRambo:Start()
 gameplay:Start()
 admin:Start()
+roles:Start()
 
 -- Studio/server tests may inspect these references without exposing authority to clients.
 script:SetAttribute("ContractVersion", Contract.Version)

@@ -8,7 +8,7 @@ local Contract = require(GameShared:WaitForChild("StoryContract"))
 local StoryService = {}
 StoryService.__index = StoryService
 
-local transitions: {[string]: {[string]: boolean}} = {
+local transitions: { [string]: { [string]: boolean } } = {
 	[Contract.States.RoleLobby] = { [Contract.States.MazeIntro] = true },
 	[Contract.States.MazeIntro] = { [Contract.States.BellaChase] = true },
 	[Contract.States.BellaChase] = { [Contract.States.RamboTaken] = true },
@@ -24,15 +24,18 @@ local transitions: {[string]: {[string]: boolean}} = {
 	[Contract.States.LetterReveal] = { [Contract.States.Credits] = true },
 }
 
-export type StoryService = typeof(setmetatable({} :: {
-	remotes: {[string]: RemoteEvent},
-	roleService: any,
-	state: string,
-	revision: number,
-	changed: BindableEvent,
-}, StoryService))
+export type StoryService = typeof(setmetatable(
+	{} :: {
+		remotes: { [string]: RemoteEvent },
+		roleService: any,
+		state: string,
+		revision: number,
+		changed: BindableEvent,
+	},
+	StoryService
+))
 
-function StoryService.new(remotes: {[string]: RemoteEvent}, roleService: any): StoryService
+function StoryService.new(remotes: { [string]: RemoteEvent }, roleService: any): StoryService
 	return setmetatable({
 		remotes = remotes,
 		roleService = roleService,
@@ -42,7 +45,7 @@ function StoryService.new(remotes: {[string]: RemoteEvent}, roleService: any): S
 	}, StoryService)
 end
 
-function StoryService:_broadcast(cue: string)
+function StoryService._broadcast(self: StoryService, cue: string)
 	self.remotes[Contract.ServerEvents.StoryCue]:FireAllClients({
 		contractVersion = Contract.Version,
 		cue = cue,
@@ -51,20 +54,20 @@ function StoryService:_broadcast(cue: string)
 	})
 end
 
-function StoryService:GetState(): string
+function StoryService.GetState(self: StoryService): string
 	return self.state
 end
 
-function StoryService:GetRevision(): number
+function StoryService.GetRevision(self: StoryService): number
 	return self.revision
 end
 
-function StoryService:CanTransition(nextState: string): boolean
+function StoryService.CanTransition(self: StoryService, nextState: string): boolean
 	local allowed = transitions[self.state]
 	return allowed ~= nil and allowed[nextState] == true
 end
 
-function StoryService:Transition(nextState: string, reason: string?): boolean
+function StoryService.Transition(self: StoryService, nextState: string, reason: string?): boolean
 	if not self:CanTransition(nextState) then
 		warn(`Rejected story transition {self.state} -> {nextState}`)
 		return false
@@ -77,21 +80,21 @@ function StoryService:Transition(nextState: string, reason: string?): boolean
 	return true
 end
 
-function StoryService:StartFor(player: Player): boolean
+function StoryService.StartFor(self: StoryService, player: Player): boolean
 	if player ~= self.roleService:GetProtagonist() or self.state ~= Contract.States.RoleLobby then
 		return false
 	end
 	return self:Transition(Contract.States.MazeIntro, "ProtagonistAssigned")
 end
 
-function StoryService:ResetToLobby(reason: string?)
+function StoryService.ResetToLobby(self: StoryService, reason: string?)
 	self.state = Contract.States.RoleLobby
 	self.revision += 1
 	self:_broadcast(Contract.Cues.ReplayReset)
 	self.changed:Fire(self.state, nil, reason or "Reset")
 end
 
-function StoryService:SendSnapshot(player: Player)
+function StoryService.SendSnapshot(self: StoryService, player: Player)
 	self.remotes[Contract.ServerEvents.StoryCue]:FireClient(player, {
 		contractVersion = Contract.Version,
 		cue = Contract.Cues.StateChanged,
@@ -100,7 +103,10 @@ function StoryService:SendSnapshot(player: Player)
 	})
 end
 
-function StoryService:ObserveChanged(callback: (string, string?, string?) -> ()): RBXScriptConnection
+function StoryService.ObserveChanged(
+	self: StoryService,
+	callback: (string, string?, string?) -> ()
+): RBXScriptConnection
 	return self.changed.Event:Connect(callback)
 end
 

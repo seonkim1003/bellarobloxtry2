@@ -30,20 +30,25 @@ local function commandArgument(message: string, alias: string): string
 	return trimmed
 end
 
-function AdminService.new(remotes: {[string]: RemoteEvent}, validator: any, roleService: any, storyService: any)
+function AdminService.new(
+	remotes: { [string]: RemoteEvent },
+	validator: any,
+	roleService: any,
+	storyService: any
+)
 	return setmetatable({
 		remotes = remotes,
 		validator = validator,
 		roleService = roleService,
 		storyService = storyService,
-		states = {} :: {[Player]: any},
-		commands = {} :: {TextChatCommand},
+		states = {} :: { [Player]: any },
+		commands = {} :: { TextChatCommand },
 		connection = nil,
 	}, AdminService)
 end
 
-function AdminService:_respond(player: Player, message: string, includeState: boolean?)
-	local payload: {[string]: any} = { message = message }
+function AdminService._respond(self: any, player: Player, message: string, includeState: boolean?)
+	local payload: { [string]: any } = { message = message }
 	if includeState then
 		payload.role = self.roleService:GetRole(player)
 		payload.storyState = self.storyService:GetState()
@@ -52,11 +57,11 @@ function AdminService:_respond(player: Player, message: string, includeState: bo
 	self.remotes[Contract.ServerEvents.AdminDiagnostics]:FireClient(player, payload)
 end
 
-function AdminService:_isAdmin(player: Player): boolean
+function AdminService._isAdmin(self: any, player: Player): boolean
 	return self.validator.HasRole(self.roleService, player, Contract.Roles.Admin)
 end
 
-function AdminService:_restoreCharacter(player: Player)
+function AdminService._restoreCharacter(self: any, player: Player)
 	local state = self.states[player]
 	if not state then
 		return
@@ -84,7 +89,13 @@ function AdminService:_restoreCharacter(player: Player)
 	table.clear(state.originals)
 end
 
-function AdminService:_remember(state: any, instance: Instance, property: string, value: any)
+function AdminService._remember(
+	_self: any,
+	state: any,
+	instance: Instance,
+	property: string,
+	value: any
+)
 	local properties = state.originals[instance]
 	if not properties then
 		properties = {}
@@ -95,7 +106,7 @@ function AdminService:_remember(state: any, instance: Instance, property: string
 	end
 end
 
-function AdminService:_applyCharacter(player: Player)
+function AdminService._applyCharacter(self: any, player: Player)
 	local state = self.states[player]
 	local character = player.Character
 	if not state or not character then
@@ -110,8 +121,9 @@ function AdminService:_applyCharacter(player: Player)
 				descendant.Transparency = 1
 			end
 		elseif (descendant:IsA("Decal") or descendant:IsA("Texture")) and state.invisible then
-			self:_remember(state, descendant, "Transparency", descendant.Transparency)
-			descendant.Transparency = 1
+			local visual = descendant :: any
+			self:_remember(state, descendant, "Transparency", visual.Transparency)
+			visual.Transparency = 1
 		end
 	end
 
@@ -130,18 +142,18 @@ function AdminService:_applyCharacter(player: Player)
 	if root and root:IsA("BasePart") then
 		local mover = root:FindFirstChild("AdminFlyVelocity")
 		if state.fly and not mover then
-			mover = Instance.new("BodyVelocity")
-			mover.Name = "AdminFlyVelocity"
-			mover.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-			mover.P = 12500
-			mover.Parent = root
+			local newMover = Instance.new("BodyVelocity")
+			newMover.Name = "AdminFlyVelocity"
+			newMover.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+			newMover.P = 12500
+			newMover.Parent = root
 		elseif not state.fly and mover then
 			mover:Destroy()
 		end
 	end
 end
 
-function AdminService:_makeAdmin(player: Player)
+function AdminService._makeAdmin(self: any, player: Player)
 	if not self.states[player] then
 		self.states[player] = {
 			fly = false,
@@ -166,7 +178,7 @@ function AdminService:_makeAdmin(player: Player)
 	self:_applyCharacter(player)
 end
 
-function AdminService:_removeAdmin(player: Player)
+function AdminService._removeAdmin(self: any, player: Player)
 	self:_restoreCharacter(player)
 	local state = self.states[player]
 	if state and state.characterConnection then
@@ -176,7 +188,12 @@ function AdminService:_removeAdmin(player: Player)
 	player:SetAttribute("AdminObserver", nil)
 end
 
-function AdminService:_createCommand(name: string, alias: string, callback: (Player, string) -> ())
+function AdminService._createCommand(
+	self: any,
+	name: string,
+	alias: string,
+	callback: (Player, string) -> ()
+)
 	local existing = TextChatService:FindFirstChild(name)
 	local command: TextChatCommand
 	if existing and existing:IsA("TextChatCommand") then
@@ -196,7 +213,12 @@ function AdminService:_createCommand(name: string, alias: string, callback: (Pla
 	table.insert(self.commands, command)
 end
 
-function AdminService:_adminCommand(name: string, alias: string, callback: (Player, string) -> ())
+function AdminService._adminCommand(
+	self: any,
+	name: string,
+	alias: string,
+	callback: (Player, string) -> ()
+)
 	self:_createCommand(name, alias, function(player, argument)
 		if not self:_isAdmin(player) then
 			self:_respond(player, "Command unavailable.")
@@ -206,14 +228,26 @@ function AdminService:_adminCommand(name: string, alias: string, callback: (Play
 	end)
 end
 
-function AdminService:Start()
+function AdminService.Start(self: any)
+	local adminLoginEnabled = Secrets.AdminPassword ~= ""
+		and Secrets.AdminPassword ~= "CHANGE-ME-BEFORE-PUBLISHING"
+	if not adminLoginEnabled then
+		warn("[Admin] Observer login disabled until ServerSecrets.AdminPassword is configured")
+	end
+
 	self:_createCommand("ObserverAdminLogin", "/admin", function(player, password)
-		if not self.validator:AllowRate(
-			player,
-			"AdminPassword",
-			Config.Admin.PasswordAttempts,
-			Config.Admin.PasswordWindowSeconds
-		) then
+		if not adminLoginEnabled then
+			self:_respond(player, "Command unavailable.")
+			return
+		end
+		if
+			not self.validator:AllowRate(
+				player,
+				"AdminPassword",
+				Config.Admin.PasswordAttempts,
+				Config.Admin.PasswordWindowSeconds
+			)
+		then
 			self:_respond(player, "Command unavailable.")
 			return
 		end
@@ -245,7 +279,10 @@ function AdminService:Start()
 		self:_restoreCharacter(player)
 		state.invisible = not state.invisible
 		self:_applyCharacter(player)
-		self:_respond(player, if state.invisible then "Invisibility enabled." else "Invisibility disabled.")
+		self:_respond(
+			player,
+			if state.invisible then "Invisibility enabled." else "Invisibility disabled."
+		)
 	end)
 	self:_adminCommand("ObserverInvulnerable", "/invulnerable", function(player)
 		self:_applyCharacter(player)
@@ -296,8 +333,16 @@ function AdminService:Start()
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local mover = root and root:FindFirstChild("AdminFlyVelocity")
-			if state.fly and humanoid and root and root:IsA("BasePart") and mover and mover:IsA("BodyVelocity") then
-				mover.Velocity = humanoid.MoveDirection * Config.Admin.FlySpeed + Vector3.new(0, state.vertical, 0)
+			if
+				state.fly
+				and humanoid
+				and root
+				and root:IsA("BasePart")
+				and mover
+				and mover:IsA("BodyVelocity")
+			then
+				mover.Velocity = humanoid.MoveDirection * Config.Admin.FlySpeed
+					+ Vector3.new(0, state.vertical, 0)
 			end
 		end
 	end)
