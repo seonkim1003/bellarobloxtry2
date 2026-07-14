@@ -198,10 +198,14 @@ local function fitFunctionalClone(
 	template: Model,
 	marker: BasePart,
 	cloneName: string,
-	maxSize: Vector3
+	maxSize: Vector3,
+	rotation: CFrame?
 ): Model
 	local clone = template:Clone()
 	clone.Name = cloneName
+	if rotation then
+		clone:PivotTo(clone:GetPivot() * rotation)
+	end
 	local _, size = clone:GetBoundingBox()
 	local scale = math.min(
 		maxSize.X / math.max(size.X, 0.01),
@@ -210,7 +214,8 @@ local function fitFunctionalClone(
 	)
 	clone:ScaleTo(clone:GetScale() * scale)
 	local bounds, fittedSize = clone:GetBoundingBox()
-	local desiredBounds = marker.CFrame * CFrame.new(0, (fittedSize.Y - marker.Size.Y) / 2, 0)
+	local desiredBounds = marker.CFrame * (rotation or CFrame.identity)
+		+ Vector3.new(0, (fittedSize.Y - marker.Size.Y) / 2, 0)
 	local transform = desiredBounds * bounds:Inverse()
 	clone:PivotTo(transform * clone:GetPivot())
 	return clone
@@ -230,7 +235,13 @@ local function placeFunctionalProps(templates: Folder): boolean
 	folder:ClearAllChildren()
 	for _, tagged in CollectionService:GetTagged("MazeExit") do
 		if tagged:IsA("BasePart") then
-			local visual = fitFunctionalClone(door, tagged, "MazeExitDoor", Vector3.new(10, 9, 3))
+			local visual = fitFunctionalClone(
+				door,
+				tagged,
+				"MazeExitDoor",
+				Vector3.new(10, 9, 3),
+				CFrame.Angles(math.rad(90), 0, 0)
+			)
 			-- The exit sensor is intentionally oversized for reliable touch/proximity.
 			-- Raise the fitted door so its threshold sits on the maze floor.
 			visual:PivotTo(visual:GetPivot() + Vector3.new(0, 2.5, 0))
@@ -263,6 +274,33 @@ local function placeFunctionalProps(templates: Folder): boolean
 		end
 	end
 	return true
+end
+
+local function arrangeFieldHuntMarkers()
+	local scenes = Workspace:FindFirstChild("Scenes")
+	local field = scenes and scenes:FindFirstChild("Field")
+	local spawn = field and field:FindFirstChild("FieldSpawn", true)
+	if field == nil or spawn == nil or not spawn:IsA("BasePart") then
+		return
+	end
+
+	-- Keep all fragments close to the Field entrance while surrounding the cluster
+	-- with Evil Rambo's patrol route so the hunt begins immediately.
+	local offsets: { [string]: Vector3 } = {
+		FragmentA = Vector3.new(8, 0, 8),
+		FragmentB = Vector3.new(18, 0, 0),
+		FragmentC = Vector3.new(8, 0, -8),
+		EvilRamboSpawn = Vector3.new(38, 0, 0),
+		PatrolA = Vector3.new(30, 0, -18),
+		PatrolB = Vector3.new(42, 0, 0),
+		PatrolC = Vector3.new(30, 0, 18),
+	}
+	for markerName, offset in offsets do
+		local marker = field:FindFirstChild(markerName, true)
+		if marker and marker:IsA("BasePart") then
+			marker.CFrame = spawn.CFrame * CFrame.new(offset)
+		end
+	end
 end
 
 local function hideAuthoredMarker(instance: Instance)
@@ -626,6 +664,7 @@ function ContentAssetMount.mountAll()
 		storeCharacterTemplate(templates, "Gigi", marketplace.characters.gigi)
 	)
 
+	arrangeFieldHuntMarkers()
 	spawnAtNpcTags(templates, "Bella", "Bella")
 	spawnAtNpcTags(templates, "FriendlyRambo", "RamboFriendly")
 	spawnAtNpcTags(templates, "EvilRambo", "RamboEvil")

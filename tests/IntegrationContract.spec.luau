@@ -205,6 +205,15 @@ assert(
 	"Evil Rambo must emit detected and caught feedback"
 )
 assert(
+	string.find(
+		gameplaySource,
+		"self.evilRambo:SetActive(state == Contract.States.FieldHunt)",
+		1,
+		true
+	),
+	"Evil Rambo must roam and hunt during the letter-fragment state"
+)
+assert(
 	string.find(gameplaySource, "function GameplayService._tryCompleteMazeExit", 1, true)
 		and string.find(gameplaySource, "instance.Touched:Connect", 1, true)
 		and string.find(gameplaySource, "function GameplayService._pollMazeExit", 1, true)
@@ -236,6 +245,11 @@ assert(
 )
 local assetMountSource = fs.readFile("src/shared/ContentAssetMount.luau")
 assert(
+	string.find(assetMountSource, "arrangeFieldHuntMarkers", 1, true)
+		and string.find(assetMountSource, "FragmentA = Vector3.new(8, 0, 8)", 1, true),
+	"Letter fragments must be clustered near the Field spawn"
+)
+assert(
 	string.find(assetMountSource, "preserveExecutable", 1, true)
 		and string.find(assetMountSource, "loadAssetModel(assetId, key, true)", 1, true),
 	"Creator-selected obby assets must preserve their original functionality"
@@ -264,6 +278,12 @@ assert(
 assert(
 	string.find(assetMountSource, 'CollectionService:AddTag(actor, "NPCSpawn")', 1, true),
 	"Runtime NPC actors must be tagged for server AI"
+)
+local mazePolishSource = fs.readFile("src/client/Scenes/MazePolish.luau")
+assert(
+	not string.find(mazePolishSource, 'glow.Name = "ExitGlow"', 1, true)
+		and string.find(mazePolishSource, "removeExitBeacon", 1, true),
+	"The vertical marketplace door must be the sole maze-exit visual"
 )
 assert(
 	string.find(assetMountSource, 'spawnAtNpcTags(templates, "RobertPattinson"', 1, true)
