@@ -280,12 +280,22 @@ local function arrangeFieldHuntMarkers()
 	local scenes = Workspace:FindFirstChild("Scenes")
 	local field = scenes and scenes:FindFirstChild("Field")
 	local spawn = field and field:FindFirstChild("FieldSpawn", true)
-	if field == nil or spawn == nil or not spawn:IsA("BasePart") then
+	local floor = field and field:FindFirstChild("FieldFloor", true)
+	if
+		field == nil
+		or spawn == nil
+		or not spawn:IsA("BasePart")
+		or floor == nil
+		or not floor:IsA("BasePart")
+	then
 		return
 	end
 
-	-- Keep all fragments close to the Field entrance while surrounding the cluster
-	-- with Evil Rambo's patrol route so the hunt begins immediately.
+	-- The authored entrance sits near a corner of the large Field floor. Anchoring
+	-- patrol offsets there put giant Evil Rambo against the map edge. Move the hunt
+	-- inward first, then keep the fragments and patrol loop close to the player.
+	local huntOrigin = floor.CFrame * CFrame.new(-45, floor.Size.Y * 0.5 + 0.5, 0)
+	spawn.CFrame = huntOrigin
 	local offsets: { [string]: Vector3 } = {
 		FragmentA = Vector3.new(8, 0, 8),
 		FragmentB = Vector3.new(18, 0, 0),
@@ -421,6 +431,18 @@ local function createNpcActor(
 	humanoid.WalkSpeed = 16
 	humanoid.Parent = actor
 
+	if npcType == "EvilRambo" then
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "EvilRamboAlwaysVisible"
+		highlight.Adornee = actor
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.FillColor = Color3.fromRGB(190, 25, 25)
+		highlight.FillTransparency = 0.55
+		highlight.OutlineColor = Color3.fromRGB(255, 235, 80)
+		highlight.OutlineTransparency = 0
+		highlight.Parent = actor
+	end
+
 	local visualAnchor = Instance.new("Part")
 	visualAnchor.Name = "VisualAnchor"
 	visualAnchor.Anchored = false
@@ -440,6 +462,11 @@ local function createNpcActor(
 	local visual = template:Clone()
 	visual.Name = "Visual"
 	sanitizeCharacterVisual(visual)
+	if npcType == "EvilRambo" then
+		-- Keep the pathfinding rig compact and reliable while presenting corrupted
+		-- Rambo as a giant dog towering over the Field hunt.
+		visual:ScaleTo(visual:GetScale() * 10)
+	end
 	local visualBounds, visualSize = visual:GetBoundingBox()
 	local visualBottom = visualBounds.Position.Y - visualSize.Y / 2
 	local desiredBottom = target.Position.Y - root.Size.Y / 2

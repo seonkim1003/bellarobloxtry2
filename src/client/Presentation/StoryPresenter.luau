@@ -102,6 +102,9 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	self:_restorePlayerMovement()
 	self._state = state
 	local d = self._deps
+	if state ~= "RoleLobby" and state ~= "Credits" then
+		d.gui.showTitle(false)
+	end
 
 	if state == "RoleLobby" then
 		d.firstPerson.release()
@@ -184,6 +187,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 			end)
 		end)
 	elseif state == "TowerClimb" then
+		d.firstPerson.apply()
 		d.lighting.applyScene("Tower")
 		d.audio.ambienceForScene("Tower")
 		d.towerBuilder.rebuildFlights()
@@ -212,6 +216,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 			end)
 		end)
 	elseif state == "FieldHunt" then
+		d.firstPerson.apply()
 		d.lighting.applyScene("Field")
 		d.audio.ambienceForScene("Field")
 		d.fragmentPrompts.start()

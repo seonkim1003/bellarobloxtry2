@@ -470,7 +470,7 @@ function GameplayService._onStateChanged(self: any, state: string)
 		end)
 	elseif state == Contract.States.RoleLobby then
 		self:_movePlayerToScene(player, Config.Story.LobbyCheckpointSceneId)
-	elseif state == Contract.States.GuideEncounter then
+	elseif state == Contract.States.GuideEncounter or state == Contract.States.TowerClimb then
 		table.clear(self.towerSteps)
 		self.towerStepCount = 0
 		self:_movePlayerToScene(player, Config.Story.TowerCheckpointSceneId)

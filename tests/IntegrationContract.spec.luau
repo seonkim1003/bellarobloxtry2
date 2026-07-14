@@ -158,6 +158,11 @@ assert(
 	string.find(mainSource, 'request("ReviveConfirmed", accepted)', 1, true),
 	"ReviveConfirmed must send a direct boolean"
 )
+assert(
+	string.find(mainSource, "role = roleChoice", 1, true)
+		and string.find(mainSource, "stage = stageChoice", 1, true),
+	"Lobby must submit the selected Bella/Admin role and gameplay stage"
+)
 local presenterSource = fs.readFile("src/client/Presentation/StoryPresenter.luau")
 assert(
 	string.find(presenterSource, 'request("CinematicFinished"', 1, true)
@@ -243,11 +248,18 @@ assert(
 	string.find(hostileSource, 'if self.npcType == "Bella" then', 1, true),
 	"Bella must have dedicated chase fallback behavior"
 )
+assert(
+	string.find(hostileSource, "self:_patrol()", 1, true)
+		and string.find(hostileSource, "self.agent:MoveTo(targetRoot.Position)", 1, true),
+	"Evil Rambo must patrol the Field and chase the detected protagonist"
+)
 local assetMountSource = fs.readFile("src/shared/ContentAssetMount.luau")
 assert(
 	string.find(assetMountSource, "arrangeFieldHuntMarkers", 1, true)
+		and string.find(assetMountSource, 'field:FindFirstChild("FieldFloor", true)', 1, true)
+		and string.find(assetMountSource, "spawn.CFrame = huntOrigin", 1, true)
 		and string.find(assetMountSource, "FragmentA = Vector3.new(8, 0, 8)", 1, true),
-	"Letter fragments must be clustered near the Field spawn"
+	"The Field hunt and Evil Rambo patrol must be inset from the map edge"
 )
 assert(
 	string.find(assetMountSource, "preserveExecutable", 1, true)
@@ -279,6 +291,16 @@ assert(
 	string.find(assetMountSource, 'CollectionService:AddTag(actor, "NPCSpawn")', 1, true),
 	"Runtime NPC actors must be tagged for server AI"
 )
+assert(
+	string.find(assetMountSource, 'if npcType == "EvilRambo" then', 1, true)
+		and string.find(assetMountSource, "visual:ScaleTo(visual:GetScale() * 10)", 1, true),
+	"Evil Rambo must be presented as a ten-times-larger giant dog"
+)
+assert(
+	string.find(assetMountSource, 'highlight.Name = "EvilRamboAlwaysVisible"', 1, true)
+		and string.find(assetMountSource, "Enum.HighlightDepthMode.AlwaysOnTop", 1, true),
+	"Evil Rambo must be highlighted through walls"
+)
 local mazePolishSource = fs.readFile("src/client/Scenes/MazePolish.luau")
 assert(
 	not string.find(mazePolishSource, 'glow.Name = "ExitGlow"', 1, true)
@@ -305,6 +327,20 @@ assert(
 	"Server must restore authored CollectionService tags from the canonical marker catalog"
 )
 local bootstrapSource = fs.readFile("src/server/Bootstrap.server.luau")
+assert(
+	string.find(bootstrapSource, 'stageChoice == "Obby"', 1, true)
+		and string.find(bootstrapSource, "Contract.States.TowerClimb", 1, true)
+		and string.find(bootstrapSource, 'stageChoice == "Scavenger Hunt"', 1, true)
+		and string.find(bootstrapSource, "Contract.States.FieldHunt", 1, true),
+	"Lobby stage choices must map to their authoritative starting states"
+)
+local roleServiceSource = fs.readFile("src/server/Services/RoleService.luau")
+assert(
+	not string.find(roleServiceSource, "task.delay", 1, true)
+		and not string.find(roleServiceSource, "_promoteNextCandidate", 1, true)
+		and string.find(roleServiceSource, "ClaimProtagonist", 1, true),
+	"Protagonist assignment must happen only after an explicit Bella selection"
+)
 local markerRegistration =
 	string.find(bootstrapSource, "WorldMarkerService.RegisterAuthoredMarkers()", 1, true)
 local checkpointStart = string.find(bootstrapSource, "checkpoints:Start()", 1, true)

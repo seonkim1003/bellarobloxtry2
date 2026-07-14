@@ -79,6 +79,24 @@ local guiSource = fs.readFile("src/client/UI/GuiShell.luau")
 local bindingsSource = fs.readFile("src/client/Controls/ActionBindings.luau")
 local mainSource = fs.readFile("src/client/Main.client.luau")
 
+assert(
+	not string.find(guiSource, '"Brand"', 1, true)
+		and string.find(guiSource, "showRoleSelection", 1, true)
+		and string.find(guiSource, "showStageSelection", 1, true),
+	"Lobby must show role selection first without the title screen overlapping it"
+)
+assert(
+	string.find(guiSource, "button.Active = true", 1, true)
+		and string.find(guiSource, "button.Modal = true", 1, true)
+		and string.find(
+			guiSource,
+			"UserInputService.MouseBehavior = Enum.MouseBehavior.Default",
+			1,
+			true
+		),
+	"Lobby role, stage, and Start buttons must support direct mouse/touch activation"
+)
+
 for _, needle in
 	{
 		"LeaveConfirm",
@@ -88,6 +106,11 @@ for _, needle in
 		"setTowerProgress",
 		"setThreatState",
 		"CursorToggle",
+		"ChooseBella",
+		"ChooseAdmin",
+		"ChooseMaze",
+		"ChooseObby",
+		"ChooseScavengerHunt",
 	}
 do
 	assert(string.find(guiSource, needle, 1, true), `GuiShell missing {needle}`)

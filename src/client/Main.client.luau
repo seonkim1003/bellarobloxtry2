@@ -94,10 +94,13 @@ end)
 -- Honor session preference default from ContentConfig.
 SessionPreferences.setReducedMotion(ContentConfig.accessibility.reducedMotionDefault == true)
 
-gui.setReadyHandler(function()
+gui.setReadyHandler(function(roleChoice: string, stageChoice: string)
 	ContentAudio.playUiClick()
 	gui.setReadyAccepted(true)
-	remotes:request("RoleReady")
+	remotes:request("RoleReady", {
+		role = roleChoice,
+		stage = stageChoice,
+	})
 end)
 
 gui.setReviveHandler(function(accepted: boolean)
@@ -157,6 +160,14 @@ remotes:on("AdminDiagnostics", function(payload: any)
 	gui.showAdminDiagnostics(true, text)
 end)
 
+-- Establish lobby presentation before remote events can transition into a stage.
+-- Marketplace loading below can take several seconds, so applying these defaults
+-- afterward would overwrite a stage cue chosen by a fast player.
+LightingController.applyScene("Lobby")
+ContentAudio.ambienceForScene("Lobby")
+FirstPerson.release()
+gui.showTitle(true)
+
 local remotesReady = remotes:start(12)
 if not remotesReady then
 	gui.setObjective("Waiting for systems remotes...")
@@ -189,8 +200,3 @@ FieldPolish.ensureLandmarks()
 
 local report = TagDiscovery.scan()
 TagDiscovery.printReport(report)
-
-LightingController.applyScene("Lobby")
-ContentAudio.ambienceForScene("Lobby")
-FirstPerson.release()
-gui.showTitle(true)

@@ -35,7 +35,7 @@ export type GuiShellApi = {
 	showAdminDiagnostics: (visible: boolean, text: string?) -> (),
 	setCursorEnabled: (enabled: boolean) -> (),
 	setReducedMotionEnabled: (enabled: boolean) -> (),
-	setReadyHandler: (handler: (() -> ())?) -> (),
+	setReadyHandler: (handler: ((roleChoice: string, stageChoice: string) -> ())?) -> (),
 	setCursorHandler: (handler: (() -> ())?) -> (),
 	setReducedMotionHandler: (handler: (() -> ())?) -> (),
 	setReviveHandler: (handler: ((accepted: boolean) -> ())?) -> (),
@@ -132,6 +132,7 @@ local function createButton(
 	button.Position = position
 	button.Size = size
 	button.AutoButtonColor = true
+	button.Active = true
 	button.Selectable = true
 	button.Parent = parent
 
@@ -185,6 +186,7 @@ function GuiShell.mount(): GuiShellApi
 	screenGui.Name = "ContentHud"
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = false
+	screenGui.DisplayOrder = 20
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = playerGui
 
@@ -202,49 +204,80 @@ function GuiShell.mount(): GuiShellApi
 	titleFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 16)
 	titleFrame.BackgroundTransparency = 0.15
 	titleFrame.Size = UDim2.fromScale(1, 1)
+	titleFrame.Active = true
+	titleFrame.ZIndex = 10
 	titleFrame.Visible = true
 	titleFrame.Parent = screenGui
-	mountModelViewport(
-		titleFrame,
-		"FatBart",
-		"TitleFatBart",
-		UDim2.fromScale(0.72, 0.1),
-		UDim2.fromScale(0.25, 0.42)
-	)
-
-	createTextLabel(titleFrame, "Brand", {
-		Text = ContentConfig.projectTitle,
-		Position = UDim2.fromScale(0.07, 0.18),
-		Size = UDim2.fromScale(0.66, 0.12),
-		Font = Enum.Font.GothamBold,
-	})
-	createTextLabel(titleFrame, "Prompt", {
-		Text = ContentConfig.ui.titlePrompt,
-		Position = UDim2.fromScale(0.12, 0.34),
-		Size = UDim2.fromScale(0.76, 0.07),
-	})
 	local roleLabel = createTextLabel(titleFrame, "Role", {
 		Text = "Role: Unassigned",
-		Position = UDim2.fromScale(0.15, 0.44),
+		Position = UDim2.fromScale(0.15, 0.4),
 		Size = UDim2.fromScale(0.7, 0.06),
+		Visible = false,
 	})
 	local lobbyHint = createTextLabel(titleFrame, "LobbyHint", {
 		Text = ContentConfig.ui.lobbyCapacityHint,
-		Position = UDim2.fromScale(0.12, 0.52),
-		Size = UDim2.fromScale(0.76, 0.08),
+		Position = UDim2.fromScale(0.12, 0.34),
+		Size = UDim2.fromScale(0.76, 0.05),
 		TextColor3 = Color3.fromRGB(190, 195, 210),
+		Visible = false,
 	})
+	local roleChoicePrompt = createTextLabel(titleFrame, "RoleChoicePrompt", {
+		Text = "Select your role",
+		Position = UDim2.fromScale(0.25, 0.3),
+		Size = UDim2.fromScale(0.5, 0.09),
+		Font = Enum.Font.GothamBold,
+	})
+	local bellaButton = createButton(
+		titleFrame,
+		"ChooseBella",
+		"Bella",
+		UDim2.fromScale(0.3, 0.43),
+		UDim2.fromScale(0.18, 0.09)
+	)
+	local adminButton = createButton(
+		titleFrame,
+		"ChooseAdmin",
+		"Admin",
+		UDim2.fromScale(0.52, 0.43),
+		UDim2.fromScale(0.18, 0.09)
+	)
+	local stageChoicePrompt = createTextLabel(titleFrame, "StageChoicePrompt", {
+		Text = "Choose stage:",
+		Position = UDim2.fromScale(0.12, 0.55),
+		Size = UDim2.fromScale(0.22, 0.045),
+	})
+	local mazeButton = createButton(
+		titleFrame,
+		"ChooseMaze",
+		"Maze",
+		UDim2.fromScale(0.34, 0.545),
+		UDim2.fromScale(0.16, 0.055)
+	)
+	local obbyButton = createButton(
+		titleFrame,
+		"ChooseObby",
+		"Obby",
+		UDim2.fromScale(0.51, 0.545),
+		UDim2.fromScale(0.16, 0.055)
+	)
+	local scavengerButton = createButton(
+		titleFrame,
+		"ChooseScavengerHunt",
+		"Scavenger Hunt",
+		UDim2.fromScale(0.68, 0.545),
+		UDim2.fromScale(0.2, 0.055)
+	)
 	local readyStatus = createTextLabel(titleFrame, "ReadyStatus", {
 		Text = ContentConfig.ui.readyIdle,
-		Position = UDim2.fromScale(0.2, 0.62),
+		Position = UDim2.fromScale(0.2, 0.63),
 		Size = UDim2.fromScale(0.6, 0.05),
 		TextColor3 = Color3.fromRGB(200, 200, 120),
 	})
 	local readyButton = createButton(
 		titleFrame,
 		"Ready",
-		`{ContentConfig.ui.readyLabel}  [Enter / A]`,
-		UDim2.fromScale(0.3, 0.7),
+		"Start",
+		UDim2.fromScale(0.3, 0.69),
 		UDim2.fromScale(0.4, 0.09)
 	)
 
@@ -252,11 +285,29 @@ function GuiShell.mount(): GuiShellApi
 		titleFrame,
 		"ReducedMotion",
 		ContentConfig.ui.reducedMotionOff,
-		UDim2.fromScale(0.25, 0.84),
+		UDim2.fromScale(0.25, 0.82),
 		UDim2.fromScale(0.5, 0.07)
 	)
 	reducedMotionButton.TextScaled = false
 	reducedMotionButton.TextSize = 16
+
+	local lobbyButtons: { TextButton } = {
+		bellaButton,
+		adminButton,
+		mazeButton,
+		obbyButton,
+		scavengerButton,
+		readyButton,
+		reducedMotionButton,
+	}
+	for _, button in lobbyButtons do
+		button.Active = true
+		button.Modal = true
+		button.ZIndex = 12
+	end
+	roleChoicePrompt.ZIndex = 11
+	stageChoicePrompt.ZIndex = 11
+	readyStatus.ZIndex = 11
 
 	-- In-game mouse unlock. Keyboard/mouse players can use Tab, controller players
 	-- can use Y, and touch/controller users can activate this selectable button.
@@ -466,7 +517,7 @@ function GuiShell.mount(): GuiShellApi
 	cursorButton.NextSelectionLeft = settingsButton
 	settingsButton.NextSelectionRight = cursorButton
 
-	local readyHandler: (() -> ())? = nil
+	local readyHandler: ((string, string) -> ())? = nil
 	local cursorHandler: (() -> ())? = nil
 	local reducedMotionHandler: (() -> ())? = nil
 	local reviveHandler: ((boolean) -> ())? = nil
@@ -478,6 +529,61 @@ function GuiShell.mount(): GuiShellApi
 	local reviveVisible = false
 	local creditsVisible = false
 	local leaveConfirmVisible = false
+	local selectedRole = ""
+	local selectedStage = "Maze"
+
+	local function showRoleSelection()
+		UserInputService.MouseIconEnabled = true
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		selectedRole = ""
+		roleChoicePrompt.Visible = true
+		bellaButton.Visible = true
+		adminButton.Visible = true
+		stageChoicePrompt.Visible = false
+		mazeButton.Visible = false
+		obbyButton.Visible = false
+		scavengerButton.Visible = false
+		readyStatus.Visible = false
+		readyButton.Visible = false
+		reducedMotionButton.Visible = false
+		ActionBindings.focus(bellaButton)
+	end
+
+	local function showStageSelection(roleChoice: string)
+		UserInputService.MouseIconEnabled = true
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		selectedRole = roleChoice
+		roleChoicePrompt.Visible = false
+		bellaButton.Visible = false
+		adminButton.Visible = false
+		stageChoicePrompt.Visible = true
+		mazeButton.Visible = true
+		obbyButton.Visible = true
+		scavengerButton.Visible = true
+		readyStatus.Visible = true
+		readyButton.Visible = true
+		reducedMotionButton.Visible = true
+		ActionBindings.focus(mazeButton)
+	end
+
+	local function updateLobbyChoices()
+		bellaButton.BackgroundColor3 = if selectedRole == "Bella"
+			then Color3.fromRGB(65, 105, 75)
+			else Color3.fromRGB(35, 35, 48)
+		adminButton.BackgroundColor3 = if selectedRole == "Admin"
+			then Color3.fromRGB(105, 75, 65)
+			else Color3.fromRGB(35, 35, 48)
+		local stageButtons: { [string]: TextButton } = {
+			Maze = mazeButton,
+			Obby = obbyButton,
+			["Scavenger Hunt"] = scavengerButton,
+		}
+		for stageName, button in stageButtons do
+			button.BackgroundColor3 = if selectedStage == stageName
+				then Color3.fromRGB(60, 75, 115)
+				else Color3.fromRGB(35, 35, 48)
+		end
+	end
 
 	local function updateMotionButtonLabels()
 		local reduced = SessionPreferences.isReducedMotion()
@@ -520,13 +626,37 @@ function GuiShell.mount(): GuiShellApi
 	end
 
 	local function invokeReady()
+		if selectedRole == "" then
+			return
+		end
 		if readyHandler then
-			readyHandler()
+			readyHandler(selectedRole, selectedStage)
 		end
 		readyStatus.Text = ContentConfig.ui.readyAccepted
 		readyStatus.TextColor3 = Color3.fromRGB(140, 220, 150)
 		readyButton.BackgroundColor3 = Color3.fromRGB(40, 90, 55)
 	end
+
+	bellaButton.Activated:Connect(function()
+		showStageSelection("Bella")
+		updateLobbyChoices()
+	end)
+	adminButton.Activated:Connect(function()
+		showStageSelection("Admin")
+		updateLobbyChoices()
+	end)
+	mazeButton.Activated:Connect(function()
+		selectedStage = "Maze"
+		updateLobbyChoices()
+	end)
+	obbyButton.Activated:Connect(function()
+		selectedStage = "Obby"
+		updateLobbyChoices()
+	end)
+	scavengerButton.Activated:Connect(function()
+		selectedStage = "Scavenger Hunt"
+		updateLobbyChoices()
+	end)
 
 	readyButton.Activated:Connect(function()
 		invokeReady()
@@ -617,6 +747,8 @@ function GuiShell.mount(): GuiShellApi
 		reducedMotionToggle = toggleReducedMotion,
 	})
 	ActionBindings.start()
+	showRoleSelection()
+	updateLobbyChoices()
 	updateMotionButtonLabels()
 	syncBindings()
 	ActionBindings.focus(readyButton)
@@ -708,7 +840,7 @@ function GuiShell.mount(): GuiShellApi
 				towerProgressLabel.Visible = false
 			end
 			if visible then
-				ActionBindings.focus(readyButton)
+				showRoleSelection()
 			else
 				ActionBindings.clearFocus()
 			end
@@ -761,7 +893,7 @@ function GuiShell.mount(): GuiShellApi
 			SessionPreferences.setReducedMotion(enabled)
 			updateMotionButtonLabels()
 		end,
-		setReadyHandler = function(handler: (() -> ())?)
+		setReadyHandler = function(handler: ((string, string) -> ())?)
 			readyHandler = handler
 		end,
 		setCursorHandler = function(handler: (() -> ())?)

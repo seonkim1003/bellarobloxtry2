@@ -6,8 +6,6 @@ return table.freeze({
 		ContentMountTimeoutSeconds = 20,
 	}),
 	Roles = table.freeze({
-		ClaimDelaySeconds = 3,
-		UnassignedTimeoutSeconds = 15,
 		MaximumPlayers = 2,
 	}),
 	Validation = table.freeze({
@@ -69,9 +67,9 @@ return table.freeze({
 		}),
 		EvilRambo = table.freeze({
 			WalkSpeed = 19,
-			CatchDistance = 5,
-			DetectionDistance = 45,
-			DisengageDistance = 70,
+			CatchDistance = 12,
+			DetectionDistance = 90,
+			DisengageDistance = 120,
 		}),
 	}),
 	Admin = table.freeze({

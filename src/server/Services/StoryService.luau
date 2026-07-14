@@ -72,10 +72,26 @@ function StoryService.Transition(self: StoryService, nextState: string, reason: 
 end
 
 function StoryService.StartFor(self: StoryService, player: Player): boolean
+	return self:StartForStage(player, Contract.States.MazeIntro)
+end
+
+function StoryService.StartForStage(self: StoryService, player: Player, startState: string): boolean
 	if player ~= self.roleService:GetProtagonist() or self.state ~= Contract.States.RoleLobby then
 		return false
 	end
-	return self:Transition(Contract.States.MazeIntro, "ProtagonistAssigned")
+	local allowed = startState == Contract.States.MazeIntro
+		or startState == Contract.States.TowerClimb
+		or startState == Contract.States.FieldHunt
+	if not allowed then
+		return false
+	end
+	local previous = self.state
+	self.state = startState
+	self.revision += 1
+	self.stateEnteredAt = os.clock()
+	self:_broadcast(Contract.Cues.StateChanged)
+	self.changed:Fire(startState, previous, "LobbyStageSelected")
+	return true
 end
 
 function StoryService.ResetToLobby(self: StoryService, reason: string?)

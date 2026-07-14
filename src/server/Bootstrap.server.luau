@@ -95,10 +95,25 @@ roles:ObserveRoleChanged(function(player, role, previousRole)
 	end
 end)
 
-remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player)
+remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player, payload)
 	if not validator:AllowAction(player, Contract.ClientEvents.RoleReady) then
 		return
 	end
+	local roleChoice = if typeof(payload) == "table" then payload.role else "Bella"
+	local stageChoice = if typeof(payload) == "table" then payload.stage else "Maze"
+	if roleChoice == "Admin" then
+		remotes[Contract.ServerEvents.AdminDiagnostics]:FireClient(player, {
+			message = "Admin requires authentication. Use /admin <password> in chat.",
+		})
+		return
+	end
+	if roleChoice ~= "Bella" or not roles:ClaimProtagonist(player) then
+		return
+	end
+	local selectedState = if stageChoice == "Obby"
+		then Contract.States.TowerClimb
+		elseif stageChoice == "Scavenger Hunt" then Contract.States.FieldHunt
+		else Contract.States.MazeIntro
 	local markedReady = roles:MarkReady(player)
 	local startedStory = false
 	if
@@ -109,7 +124,7 @@ remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player)
 			story:GetState()
 		)
 	then
-		startedStory = story:StartFor(player)
+		startedStory = story:StartForStage(player, selectedState)
 	end
 	if not startedStory then
 		story:SendSnapshot(player)

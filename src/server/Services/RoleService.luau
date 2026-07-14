@@ -14,7 +14,7 @@ RoleService.__index = RoleService
 export type RoleService = typeof(setmetatable(
 	{} :: {
 		remotes: { [string]: RemoteEvent },
-		records: { [Player]: { role: string, joinedAt: number, ready: boolean } },
+		records: { [Player]: { role: string, ready: boolean } },
 		protagonist: Player?,
 		roleChanged: BindableEvent,
 		started: boolean,
@@ -60,44 +60,7 @@ function RoleService._assign(self: RoleService, player: Player, role: string): b
 	player:SetAttribute("GameRole", role)
 	self:_send(player)
 	self.roleChanged:Fire(player, role, previousRole)
-	if previousRole == Contract.Roles.Protagonist and role ~= Contract.Roles.Protagonist then
-		task.defer(function()
-			self:_promoteNextCandidate()
-		end)
-	end
 	return true
-end
-
-function RoleService._promoteNextCandidate(self: RoleService)
-	if self.protagonist then
-		return
-	end
-	local now = os.clock()
-	local candidate: Player? = nil
-	local oldestJoin = math.huge
-	for player, record in self.records do
-		if
-			record.role == Contract.Roles.Unassigned
-			and now - record.joinedAt >= Config.Roles.ClaimDelaySeconds
-			and record.joinedAt < oldestJoin
-		then
-			candidate = player
-			oldestJoin = record.joinedAt
-		end
-	end
-	if candidate then
-		self:_assign(candidate, Contract.Roles.Protagonist)
-	end
-end
-
-function RoleService._considerProtagonist(self: RoleService, player: Player)
-	local record = self.records[player]
-	if not record or record.role ~= Contract.Roles.Unassigned then
-		return
-	end
-	if not self.protagonist then
-		self:_assign(player, Contract.Roles.Protagonist)
-	end
 end
 
 function RoleService._onPlayerAdded(self: RoleService, player: Player)
@@ -106,26 +69,10 @@ function RoleService._onPlayerAdded(self: RoleService, player: Player)
 	end
 	self.records[player] = {
 		role = Contract.Roles.Unassigned,
-		joinedAt = os.clock(),
 		ready = false,
 	}
 	player:SetAttribute("GameRole", Contract.Roles.Unassigned)
 	self:_send(player)
-
-	task.delay(Config.Roles.ClaimDelaySeconds, function()
-		self:_considerProtagonist(player)
-	end)
-	task.delay(Config.Roles.UnassignedTimeoutSeconds, function()
-		local record = self.records[player]
-		if not record or record.role ~= Contract.Roles.Unassigned or player.Parent ~= Players then
-			return
-		end
-		if not self.protagonist then
-			self:_considerProtagonist(player)
-		end
-		-- A second admitted player remains an observer/waiting participant. They
-		-- are promoted automatically if the protagonist leaves.
-	end)
 end
 
 function RoleService._trackedCount(self: RoleService): number
@@ -153,11 +100,6 @@ function RoleService._onPlayerRemoving(self: RoleService, player: Player)
 	end
 	self.records[player] = nil
 	self.roleChanged:Fire(player, Contract.Roles.Unassigned, previousRole)
-	if previousRole == Contract.Roles.Protagonist then
-		task.defer(function()
-			self:_promoteNextCandidate()
-		end)
-	end
 end
 
 function RoleService.Start(self: RoleService)
@@ -184,6 +126,10 @@ function RoleService.MarkReady(self: RoleService, player: Player): boolean
 	record.ready = true
 	self:_send(player)
 	return true
+end
+
+function RoleService.ClaimProtagonist(self: RoleService, player: Player): boolean
+	return self:_assign(player, Contract.Roles.Protagonist)
 end
 
 function RoleService.IsReady(self: RoleService, player: Player): boolean
