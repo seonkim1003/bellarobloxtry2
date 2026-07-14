@@ -111,7 +111,8 @@ function RobberPresentation.clear()
 		return
 	end
 	for _, child in folder:GetChildren() do
-		if child.Name:find("RobberPatterinson") then
+		-- Only destroy local fallbacks — never the server-mounted marketplace NPC.
+		if child.Name == "RobberPatterinson_Client" then
 			child:Destroy()
 		end
 	end

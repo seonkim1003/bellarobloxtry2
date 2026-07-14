@@ -1,8 +1,12 @@
 --!strict
 --[[
 	Canonical Agent 2 content ownership path.
-	Runtime mount modules currently sync via src/client/Content until coordinator
-	maps ReplicatedStorage.Content → src/content in default.project.json.
+
+	ReplicatedStorage.Content  →  src/content   (ownership notes / future shared content modules)
+	StarterPlayerScripts.GameClient/Content → src/client/Content  (runtime presentation helpers)
+
+	Do not move Presentation / UI / Audio into src/content without coordinator approval.
+	Shared configuration stays in src/shared/ContentConfig.luau.
 ]]
 
 return table.freeze({
@@ -15,7 +19,8 @@ return table.freeze({
 		"src/shared/ContentConfig.luau",
 		"src/workspace/Scenes",
 	}),
-	phase = 1,
+	phase = 4,
+	purpose = "Ownership + mapping documentation for content packages; not UI/runtime presentation.",
 	requiredMapping = table.freeze({
 		parent = "ReplicatedStorage",
 		name = "Content",

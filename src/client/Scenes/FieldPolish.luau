@@ -1,6 +1,6 @@
 --!strict
 --[[
-	Field landmarks for chase-readable routes (visual only).
+	Field landmarks for chase-readable routes + fragment remaining markers (visual only).
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -42,6 +42,37 @@ function FieldPolish.ensureLandmarks()
 			light.Range = 18
 			light.Color = Color3.fromRGB(140, 180, 120)
 			light.Parent = post
+		end
+	end
+
+	for _, tagged in CollectionService:GetTagged("LetterFragment") do
+		if tagged:IsA("BasePart") and tagged:IsDescendantOf(field) then
+			local spark = Instance.new("Part")
+			spark.Name = `FragmentCue_{tagged.Name}`
+			spark.Anchored = true
+			spark.CanCollide = false
+			spark.Size = Vector3.new(1.2, 1.2, 1.2)
+			spark.Shape = Enum.PartType.Ball
+			spark.Color = Color3.fromRGB(240, 220, 120)
+			spark.Material = Enum.Material.Neon
+			spark.Transparency = 0.35
+			spark.CFrame = tagged.CFrame * CFrame.new(0, 2.2, 0)
+			spark.Parent = folder
+
+			local billboard = Instance.new("BillboardGui")
+			billboard.Size = UDim2.fromOffset(90, 28)
+			billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+			billboard.MaxDistance = 40
+			billboard.Parent = spark
+
+			local label = Instance.new("TextLabel")
+			label.BackgroundTransparency = 1
+			label.Size = UDim2.fromScale(1, 1)
+			label.Font = Enum.Font.GothamBold
+			label.TextScaled = true
+			label.TextColor3 = Color3.fromRGB(255, 240, 180)
+			label.Text = "✉"
+			label.Parent = billboard
 		end
 	end
 end

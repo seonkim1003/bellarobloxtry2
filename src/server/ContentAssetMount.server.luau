@@ -7,6 +7,15 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local templates = ReplicatedStorage:FindFirstChild("ContentModels")
+if not templates then
+	templates = Instance.new("Folder")
+	templates.Name = "ContentModels"
+	templates.Parent = ReplicatedStorage
+end
+templates:SetAttribute("Ready", false)
+templates:SetAttribute("MountFailed", false)
+
 local function getSharedFolder(): Folder
 	local gameShared = ReplicatedStorage:FindFirstChild("GameShared")
 	if gameShared and gameShared:IsA("Folder") then
@@ -29,4 +38,12 @@ assert(contentMountModule:IsA("ModuleScript"))
 local ContentAssetMount = (require :: any)(contentMountModule)
 
 print(`[{label}] mounting content marketplace assets…`)
-ContentAssetMount.mountAll()
+local ok, mountError = pcall(function()
+	ContentAssetMount.mountAll()
+end)
+if not ok then
+	templates:SetAttribute("MountFailed", true)
+	warn(`[{label}] content mount failed: {mountError}`)
+end
+-- Always release Bootstrap. Runtime fallbacks remain available after a failed mount.
+templates:SetAttribute("Ready", true)

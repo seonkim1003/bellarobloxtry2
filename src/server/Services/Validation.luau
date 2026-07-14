@@ -1,6 +1,11 @@
 --!strict
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("GameShared"):WaitForChild("SystemsConfig"))
+local RuntimeRules =
+	require(ReplicatedStorage:WaitForChild("GameShared"):WaitForChild("RuntimeRules"))
 
 local Validation = {}
 Validation.__index = Validation
@@ -84,16 +89,25 @@ function Validation.AllowRate(
 	end
 
 	local bucket = playerBuckets[action]
-	if not bucket or now - bucket.startedAt >= windowSeconds then
-		playerBuckets[action] = { startedAt = now, count = 1 }
-		return true
-	end
+	local allowed, startedAt, count = RuntimeRules.evaluateRateLimit(
+		if bucket then bucket.startedAt else nil,
+		if bucket then bucket.count else nil,
+		now,
+		limit,
+		windowSeconds
+	)
+	playerBuckets[action] = { startedAt = startedAt, count = count }
+	return allowed
+end
 
-	if bucket.count >= limit then
+function Validation.AllowAction(self: Validator, player: Player, action: string): boolean
+	local rules: any = Config.Validation.RemoteActions
+	local rule = rules[action]
+	if rule == nil then
+		warn(`Missing configured rate limit for remote action {action}`)
 		return false
 	end
-	bucket.count += 1
-	return true
+	return self:AllowRate(player, action, rule.Limit, rule.WindowSeconds)
 end
 
 function Validation.ForgetPlayer(self: Validator, player: Player)

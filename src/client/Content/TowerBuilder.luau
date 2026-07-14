@@ -1,7 +1,8 @@
 --!strict
 --[[
-	Builds / refreshes a no-fail ASMR tower: 28 steps across 7 right-angle flights.
-	Uses CollectionService ASMRStep tags and ContentConfig sound IDs.
+	Builds / refreshes ASMR tower step triggers: 28 steps across 7 right-angle flights.
+	When a reviewed MarketplaceMap tower is present, only lightweight invisible
+	ASMRStep sensors are placed (no duplicate visible geometry).
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -10,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChild("SharedAccess"))
 local ContentConfig = SharedAccess.requireContentConfig()
 local Tagging = require(script.Parent:WaitForChild("Tagging"))
+local MarketplaceIntegration = require(script.Parent:WaitForChild("MarketplaceIntegration"))
 
 local TowerBuilder = {}
 
@@ -38,98 +40,111 @@ local function clearGeneratedSteps(tower: Model)
 			child.Name:match("^ASMRStep_")
 			or child.Name:match("^TowerFlight_")
 			or child.Name == "TowerRail"
+			or child.Name == "ContentASMRSensors"
 		then
 			child:Destroy()
 		end
 	end
 end
 
+local function placeStepPart(
+	parent: Instance,
+	index: number,
+	position: Vector3,
+	facing: number,
+	visible: boolean
+)
+	local step = Instance.new("Part")
+	step.Name = `ASMRStep_{index}`
+	step.Anchored = true
+	step.CanCollide = visible
+	step.CanTouch = true
+	step.Size = if visible then Vector3.new(3, 0.5, 5) else Vector3.new(3.2, 1.2, 5)
+	step.Transparency = if visible then 0 else 1
+	step.Color = Color3.fromRGB(170, 150, 100)
+	step.Material = if visible then Enum.Material.WoodPlanks else Enum.Material.SmoothPlastic
+	step.CFrame = CFrame.new(position) * CFrame.Angles(0, -facing, 0)
+	step.Parent = parent
+
+	local soundId = ContentConfig.sounds.asmrSteps[index] or "rbxassetid://0"
+	Tagging.applyMarker(step, "ASMRStep", {
+		SceneId = "Tower",
+		MarkerId = `ASMRStep_{index}`,
+		SoundId = soundId,
+		SequenceIndex = index,
+	})
+end
+
 function TowerBuilder.rebuildFlights()
 	local tower = ensureTowerModel()
 	clearGeneratedSteps(tower)
 
+	local marketplaceTower = MarketplaceIntegration.hasSceneMap("Tower")
 	local stepCount = ContentConfig.towerStepCount
 	local flights = ContentConfig.towerFlights
 	local stepsPerFlight = math.ceil(stepCount / flights)
 
-	local origin = Vector3.new(140, 0, 0)
+	local towerLayout = ContentConfig.sceneLayouts.Tower.position
+	local origin = Vector3.new(towerLayout.x - 10, towerLayout.y, towerLayout.z - 10)
+	-- Prefer marketplace map pivot when available so sensors land near real stairs.
+	local map = tower:FindFirstChild("MarketplaceMap")
+	if map and map:IsA("Model") then
+		local pivot = map:GetPivot().Position
+		origin = Vector3.new(pivot.X, pivot.Y, pivot.Z)
+	end
+
 	local facing = 0
 	local cursor = origin
+	local parent: Instance = tower
+
+	if marketplaceTower then
+		local folder = Instance.new("Folder")
+		folder.Name = "ContentASMRSensors"
+		folder.Parent = tower
+		parent = folder
+	end
 
 	for flight = 0, flights - 1 do
-		local flightPart = Instance.new("Part")
-		flightPart.Name = `TowerFlight_{flight + 1}`
-		flightPart.Anchored = true
-		flightPart.CanCollide = true
-		flightPart.Size = Vector3.new(stepsPerFlight * 3 + 2, 1, 6)
-		flightPart.Color = Color3.fromRGB(55, 50, 65)
-		flightPart.Material = Enum.Material.Brick
-		local mid = cursor
-			+ Vector3.new(
-				math.cos(facing) * (flightPart.Size.X / 2),
-				1 + flight * 4,
-				math.sin(facing) * (flightPart.Size.X / 2)
-			)
-		flightPart.CFrame = CFrame.new(mid) * CFrame.Angles(0, -facing, 0)
-		flightPart.Parent = tower
-
 		for stepInFlight = 1, stepsPerFlight do
 			local index = flight * stepsPerFlight + stepInFlight
 			if index > stepCount then
 				break
 			end
 
-			local step = Instance.new("Part")
-			step.Name = `ASMRStep_{index}`
-			step.Anchored = true
-			step.CanCollide = true
-			step.Size = Vector3.new(2.6, 0.35, 4.5)
-			step.Color = Color3.fromRGB(170, 150, 100)
-			step.Material = Enum.Material.WoodPlanks
 			local along = (stepInFlight - 0.5) * 3
 			local position = cursor
-				+ Vector3.new(
-					math.cos(facing) * along,
-					1.4 + flight * 4 + stepInFlight * 0.15,
-					math.sin(facing) * along
-				)
-			step.CFrame = CFrame.new(position) * CFrame.Angles(0, -facing, 0)
-			step.Parent = tower
-
-			local soundId = ContentConfig.sounds.asmrSteps[index] or "rbxassetid://0"
-			Tagging.applyMarker(step, "ASMRStep", {
-				SceneId = "Tower",
-				MarkerId = `ASMRStep_{index}`,
-				SoundId = soundId,
-				SequenceIndex = index,
-			})
+				+ Vector3.new(math.cos(facing) * along, 1 + index * 0.75, math.sin(facing) * along)
+			placeStepPart(parent, index, position, facing, not marketplaceTower)
 		end
 
-		-- Right-angle turn for next flight.
-		facing += math.rad(90)
 		cursor = cursor
 			+ Vector3.new(
-				math.cos(facing - math.rad(90)) * (stepsPerFlight * 3),
+				math.cos(facing) * (stepsPerFlight * 3),
 				0,
-				math.sin(facing - math.rad(90)) * (stepsPerFlight * 3)
+				math.sin(facing) * (stepsPerFlight * 3)
 			)
+		facing += math.rad(90)
 	end
 
-	-- Soft rail for readability (collision on for no-fail guidance feel).
-	local rail = Instance.new("Part")
-	rail.Name = "TowerRail"
-	rail.Anchored = true
-	rail.CanCollide = true
-	rail.Size = Vector3.new(1, 12, 1)
-	rail.Color = Color3.fromRGB(90, 90, 100)
-	rail.Material = Enum.Material.Metal
-	rail.CFrame = CFrame.new(origin + Vector3.new(-2, 8, -2))
-	rail.Parent = tower
+	if not marketplaceTower then
+		local rail = Instance.new("Part")
+		rail.Name = "TowerRail"
+		rail.Anchored = true
+		rail.CanCollide = true
+		rail.Size = Vector3.new(1, 12, 1)
+		rail.Color = Color3.fromRGB(90, 90, 100)
+		rail.Material = Enum.Material.Metal
+		rail.CFrame = CFrame.new(origin + Vector3.new(-2, 8, -2))
+		rail.Parent = tower
+	end
 
-	-- Ensure spawn / robber / cinematic markers still tagged if present.
 	for _, tagged in CollectionService:GetTagged("ASMRStep") do
 		if tagged:IsDescendantOf(tower) and tagged:IsA("BasePart") then
-			tagged.CanCollide = true
+			if marketplaceTower then
+				tagged.CanCollide = false
+			else
+				tagged.CanCollide = true
+			end
 		end
 	end
 end

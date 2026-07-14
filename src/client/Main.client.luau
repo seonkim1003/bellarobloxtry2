@@ -20,6 +20,8 @@ local LightingController =
 local ContentPackage = require(clientRoot:WaitForChild("Content"))
 
 local SprintControls = require(clientRoot:WaitForChild("Controls"):WaitForChild("SprintControls"))
+local SessionPreferences =
+	require(clientRoot:WaitForChild("Controls"):WaitForChild("SessionPreferences"))
 local ContentAudio = require(clientRoot:WaitForChild("Audio"):WaitForChild("ContentAudio"))
 local ASMRStepListener = require(clientRoot:WaitForChild("Audio"):WaitForChild("ASMRStepListener"))
 local CinematicPlayer =
@@ -71,8 +73,26 @@ local presenter = StoryPresenter.new({
 	towerBuilder = ContentPackage.TowerBuilder,
 })
 
+FirstPerson.bindCursorToggle(gui.setCursorEnabled)
+gui.setCursorHandler(function()
+	FirstPerson.toggleCursor()
+end)
+
+asmr:setProgressHandler(function(step: number, total: number)
+	gui.setTowerProgress(step, total)
+	if step == 1 then
+		gui.setObjective(ContentConfig.ui.towerGoalStart)
+	elseif step >= total - 3 then
+		gui.setObjective(ContentConfig.ui.towerGoalNearTop)
+	end
+end)
+
+-- Honor session preference default from ContentConfig.
+SessionPreferences.setReducedMotion(ContentConfig.accessibility.reducedMotionDefault == true)
+
 gui.setReadyHandler(function()
 	ContentAudio.playUiClick()
+	gui.setReadyAccepted(true)
 	remotes:request("RoleReady")
 end)
 
@@ -110,6 +130,15 @@ end)
 
 remotes:on("FragmentUpdate", function(payload: any)
 	presenter:handleFragment(payload)
+	if typeof(payload) == "table" then
+		if payload.detected == true then
+			gui.setThreatState("detected")
+		elseif payload.caught == true then
+			gui.setThreatState("chase")
+		elseif typeof(payload.count) == "number" then
+			gui.setThreatState("safe")
+		end
+	end
 end)
 
 remotes:on("RoleUpdate", function(payload: any)
@@ -136,24 +165,28 @@ local marketplaceReady = ContentPackage.MarketplaceIntegration.waitUntilReady(12
 local mountedScenes = ContentPackage.MarketplaceIntegration.listMountedScenes()
 print(`[Content] Marketplace ready={marketplaceReady} scenes={table.concat(mountedScenes, ",")}`)
 
-if not ContentPackage.MarketplaceIntegration.hasSceneMap("Tower") then
-	ContentPackage.TowerBuilder.rebuildFlights()
-else
-	-- Still ensure ASMR step triggers exist near the tower spawn.
-	ContentPackage.TowerBuilder.rebuildFlights()
-	print("[Content] Tower marketplace map present; ASMR steps rebuilt alongside it")
+-- Rebuild the deterministic tower flights and their ASMR sensors.
+ContentPackage.TowerBuilder.rebuildFlights()
+if ContentPackage.MarketplaceIntegration.hasSceneMap("Tower") then
+	print("[Content] Tower marketplace map present; ASMR sensors only (no duplicate mesh)")
 end
+
+local hiddenStandIns = ContentPackage.MarketplaceIntegration.hideAllStandIns()
+print(`[Content] Soft-hid {hiddenStandIns} marketplace stand-in parts`)
 
 if not ContentPackage.MarketplaceIntegration.hasSceneMap("Maze") then
 	MazePolish.ensureReadableShell()
+else
+	MazePolish.ensureExitReadable()
 end
-if not ContentPackage.MarketplaceIntegration.hasSceneMap("Field") then
-	FieldPolish.ensureLandmarks()
-end
+-- Landmark + fragment cue polish is useful whether or not a marketplace
+-- field map is present; the function is idempotent either way.
+FieldPolish.ensureLandmarks()
 
 local report = TagDiscovery.scan()
 TagDiscovery.printReport(report)
 
 LightingController.applyScene("Lobby")
 ContentAudio.ambienceForScene("Lobby")
+FirstPerson.release()
 gui.showTitle(true)

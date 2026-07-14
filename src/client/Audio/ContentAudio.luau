@@ -8,6 +8,8 @@ local SoundService = game:GetService("SoundService")
 
 local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChild("SharedAccess"))
 local ContentConfig = SharedAccess.requireContentConfig()
+local AssetFallback =
+	require(script.Parent.Parent:WaitForChild("Content"):WaitForChild("AssetFallback"))
 
 local ContentAudio = {}
 
@@ -23,11 +25,12 @@ ambienceFolder.Parent = SoundService
 local activeAmbience: Sound? = nil
 
 local function isPlaceholderId(soundId: string): boolean
-	return soundId == "" or soundId == "rbxassetid://0" or soundId == "0"
+	return AssetFallback.isMissing(soundId)
 end
 
 function ContentAudio.safePlay(soundId: string, volume: number?, parent: Instance?): Sound?
-	if isPlaceholderId(soundId) then
+	local normalized = AssetFallback.normalizeSoundId(soundId)
+	if isPlaceholderId(normalized) then
 		-- Placeholder: no audible asset yet; still return a silent Sound for timing APIs.
 		local silent = Instance.new("Sound")
 		silent.Name = "ContentSilentPlaceholder"
@@ -40,7 +43,7 @@ function ContentAudio.safePlay(soundId: string, volume: number?, parent: Instanc
 
 	local sound = Instance.new("Sound")
 	sound.Name = "ContentOneShot"
-	sound.SoundId = soundId
+	AssetFallback.applySound(sound, normalized)
 	sound.Volume = volume or 0.5
 	sound.SoundGroup = group
 	sound.Parent = parent or SoundService
@@ -76,13 +79,14 @@ function ContentAudio.setAmbience(entry: { soundId: string, volume: number, loop
 		activeAmbience = nil
 	end
 
-	if isPlaceholderId(entry.soundId) then
+	local normalized = AssetFallback.normalizeSoundId(entry.soundId)
+	if isPlaceholderId(normalized) then
 		return
 	end
 
 	local sound = Instance.new("Sound")
 	sound.Name = "Ambience"
-	sound.SoundId = entry.soundId
+	AssetFallback.applySound(sound, normalized)
 	sound.Volume = entry.volume
 	sound.Looped = entry.looped
 	sound.SoundGroup = group

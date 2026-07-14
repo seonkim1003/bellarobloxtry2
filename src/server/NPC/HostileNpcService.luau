@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
 local Config = require(GameShared:WaitForChild("SystemsConfig"))
+local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 local PathAgent = require(script.Parent:WaitForChild("PathAgent"))
 
 local HostileNpcService = {}
@@ -16,7 +17,7 @@ function HostileNpcService.new(
 	roleService: any,
 	npcType: string,
 	settings: any,
-	onCaught: (Player, string) -> (),
+	onCaught: (Player, string) -> boolean,
 	onDetected: ((Player, string) -> ())?
 )
 	return setmetatable({
@@ -32,6 +33,7 @@ function HostileNpcService.new(
 		patrolIndex = 1,
 		elapsed = 0,
 		catchDebounce = false,
+		lastDetectedAt = -math.huge,
 		connection = nil,
 	}, HostileNpcService)
 end
@@ -46,6 +48,10 @@ local function positionOf(instance: Instance): Vector3?
 end
 
 function HostileNpcService._tryAttach(self: any, candidate: Instance)
+	if self.agent and self.agent.model.Parent == nil then
+		self.agent:Cancel()
+		self.agent = nil
+	end
 	if self.agent or not candidate:IsA("Model") then
 		return
 	end
@@ -118,11 +124,13 @@ function HostileNpcService._step(self: any)
 	end
 	local distance = (self.agent.root.Position - targetRoot.Position).Magnitude
 	if distance <= self.settings.CatchDistance and not self.catchDebounce then
-		self.catchDebounce = true
-		self.onCaught(player, self.npcType)
-		task.delay(1.5, function()
-			self.catchDebounce = false
-		end)
+		local accepted = self.onCaught(player, self.npcType)
+		if accepted then
+			self.catchDebounce = true
+			task.delay(1.5, function()
+				self.catchDebounce = false
+			end)
+		end
 		return
 	end
 
@@ -135,7 +143,18 @@ function HostileNpcService._step(self: any)
 		self.chasing = distance <= self.settings.DetectionDistance
 			and self:_canSee(character, targetRoot)
 	end
-	if not wasChasing and self.chasing and self.onDetected then
+	local now = os.clock()
+	if
+		self.onDetected
+		and RuntimeRules.shouldEmitDetection(
+			wasChasing,
+			self.chasing,
+			self.lastDetectedAt,
+			now,
+			Config.NPC.DetectionCooldownSeconds
+		)
+	then
+		self.lastDetectedAt = now
 		self.onDetected(player, self.npcType)
 	end
 
@@ -165,6 +184,9 @@ end
 
 function HostileNpcService.SetActive(self: any, active: boolean)
 	self.active = active
+	if active then
+		self:_discover()
+	end
 	if not active and self.agent then
 		self.agent:Cancel()
 	end
@@ -175,6 +197,7 @@ function HostileNpcService.Reset(self: any)
 	self.chasing = self.npcType == "Bella"
 	self.patrolIndex = 1
 	self.catchDebounce = false
+	self.lastDetectedAt = -math.huge
 	if self.agent then
 		self.agent:Reset()
 	end

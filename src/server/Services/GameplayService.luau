@@ -7,20 +7,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
 local Config = require(GameShared:WaitForChild("SystemsConfig"))
+local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local GameplayService = {}
 GameplayService.__index = GameplayService
-
-local cinematicTransitions = {
-	[Contract.States.MazeIntro] = { cue = "MazeIntro", next = Contract.States.BellaChase },
-	[Contract.States.RamboTaken] = { cue = "RamboTaken", next = Contract.States.GuideEncounter },
-	[Contract.States.GuideEncounter] = { cue = "GuideEncounter", next = Contract.States.TowerClimb },
-	[Contract.States.Corruption] = { cue = "Corruption", next = Contract.States.FieldHunt },
-	[Contract.States.LetterTheft] = { cue = "LetterTheft", next = Contract.States.DogFight },
-	[Contract.States.DogFight] = { cue = "DogFight", next = Contract.States.Epilogue },
-	[Contract.States.Epilogue] = { cue = "Epilogue", next = Contract.States.LetterReveal },
-	[Contract.States.LetterReveal] = { cue = "LetterReveal", next = Contract.States.Credits },
-}
 
 function GameplayService.new(
 	remotes: { [string]: RemoteEvent },
@@ -43,19 +33,50 @@ function GameplayService.new(
 		evilRambo = evilRambo,
 		fragments = {} :: { [string]: boolean },
 		fragmentCount = 0,
-		bound = {} :: { [Instance]: boolean },
+		towerSteps = {} :: { [number]: boolean },
+		towerStepCount = 0,
 		promptBound = {} :: { [Instance]: boolean },
 		fragmentPrompts = {} :: { [Instance]: ProximityPrompt },
+		mazePrompts = {} :: { [Instance]: ProximityPrompt },
+		storyPrompts = {} :: { [Instance]: ProximityPrompt },
+		towerStepBound = {} :: { [Instance]: boolean },
 	}, GameplayService)
+end
+
+function GameplayService._bindTowerStep(self: any, instance: Instance)
+	if self.towerStepBound[instance] or not instance:IsA("BasePart") then
+		return
+	end
+	self.towerStepBound[instance] = true
+	instance.Touched:Connect(function(hit)
+		if not self.validator.IsStoryState(self.storyService, Contract.States.TowerClimb) then
+			return
+		end
+		local character = hit:FindFirstAncestorOfClass("Model")
+		local player = character and Players:GetPlayerFromCharacter(character)
+		if not player or player.Character ~= character or not self:_isProtagonist(player) then
+			return
+		end
+		local sequenceIndex = instance:GetAttribute(Contract.Attributes.SequenceIndex)
+		if
+			typeof(sequenceIndex) ~= "number"
+			or sequenceIndex < 1
+			or sequenceIndex > Config.Story.TowerStepCount
+			or self.towerSteps[sequenceIndex]
+		then
+			return
+		end
+		self.towerSteps[sequenceIndex] = true
+		self.towerStepCount += 1
+		self:_fireObjective(
+			player,
+			`Climb the tower: {self.towerStepCount}/{Config.Story.TowerStepCount} steps`
+		)
+	end)
 end
 
 function GameplayService._isProtagonist(self: any, player: Player): boolean
 	return self.validator.HasRole(self.roleService, player, Contract.Roles.Protagonist)
-end
-
-function GameplayService._playerFromHit(_self: any, hit: BasePart): Player?
-	local model = hit:FindFirstAncestorOfClass("Model")
-	return if model then Players:GetPlayerFromCharacter(model) else nil
 end
 
 function GameplayService._fireObjective(self: any, player: Player, objective: string)
@@ -65,15 +86,15 @@ function GameplayService._fireObjective(self: any, player: Player, objective: st
 	})
 end
 
-function GameplayService._onCatch(self: any, player: Player, npcType: string)
+function GameplayService._onCatch(self: any, player: Player, npcType: string): boolean
 	if not self:_isProtagonist(player) then
-		return
+		return false
 	end
 	local expectedState = if npcType == "Bella"
 		then Contract.States.BellaChase
 		else Contract.States.FieldHunt
 	if not self.validator.IsStoryState(self.storyService, expectedState) then
-		return
+		return false
 	end
 	if npcType == "EvilRambo" then
 		self.remotes[Contract.ServerEvents.FragmentUpdate]:FireClient(player, {
@@ -87,6 +108,7 @@ function GameplayService._onCatch(self: any, player: Player, npcType: string)
 		player,
 		if npcType == "Bella" then "Escape Bella" else "Find the letter fragments"
 	)
+	return true
 end
 
 function GameplayService._onDetected(self: any, player: Player, npcType: string)
@@ -101,19 +123,6 @@ function GameplayService._onDetected(self: any, player: Player, npcType: string)
 			detected = true,
 		})
 	end
-end
-
-function GameplayService._bindTouched(self: any, instance: Instance, callback: (Player) -> ())
-	if self.bound[instance] or not instance:IsA("BasePart") then
-		return
-	end
-	self.bound[instance] = true
-	instance.Touched:Connect(function(hit)
-		local player = self:_playerFromHit(hit)
-		if player then
-			callback(player)
-		end
-	end)
 end
 
 function GameplayService._bindPrompt(
@@ -162,7 +171,7 @@ function GameplayService._bindPrompt(
 end
 
 function GameplayService._bindMazeExit(self: any, instance: Instance)
-	self:_bindTouched(instance, function(player)
+	local prompt = self:_bindPrompt(instance, "Escape the maze", function(player)
 		if
 			self:_isProtagonist(player)
 			and self.validator.IsNear(
@@ -176,13 +185,17 @@ function GameplayService._bindMazeExit(self: any, instance: Instance)
 			self.storyService:Transition(Contract.States.RamboTaken, "MazeExitReached")
 		end
 	end)
+	if prompt then
+		self.mazePrompts[instance] = prompt
+		prompt.Enabled = self.storyService:GetState() == Contract.States.BellaChase
+	end
 end
 
 function GameplayService._bindStoryTrigger(self: any, instance: Instance)
 	if instance:GetAttribute(Contract.Attributes.MarkerId) ~= "TowerTop" then
 		return
 	end
-	self:_bindPrompt(instance, "Reach the token", function(player)
+	local prompt = self:_bindPrompt(instance, "Reach the top", function(player)
 		if
 			self:_isProtagonist(player)
 			and self.validator.IsNear(
@@ -192,9 +205,20 @@ function GameplayService._bindStoryTrigger(self: any, instance: Instance)
 			)
 			and self.validator.IsStoryState(self.storyService, Contract.States.TowerClimb)
 		then
-			self.storyService:Transition(Contract.States.RevivePrompt, "TowerTopReached")
+			if self.towerStepCount >= Config.Story.TowerStepCount then
+				self.storyService:Transition(Contract.States.RevivePrompt, "TowerTopReached")
+			else
+				self:_fireObjective(
+					player,
+					`Steps missing: {self.towerStepCount}/{Config.Story.TowerStepCount}`
+				)
+			end
 		end
 	end)
+	if prompt then
+		self.storyPrompts[instance] = prompt
+		prompt.Enabled = self.storyService:GetState() == Contract.States.TowerClimb
+	end
 end
 
 function GameplayService._bindFragment(self: any, instance: Instance)
@@ -232,17 +256,30 @@ function GameplayService._bindFragment(self: any, instance: Instance)
 	end)
 	if prompt then
 		self.fragmentPrompts[instance] = prompt
-		prompt.Enabled = instance:GetAttribute("Collected") ~= true
+		prompt.Enabled = self.storyService:GetState() == Contract.States.FieldHunt
+			and instance:GetAttribute("Collected") ~= true
 	end
 end
 
 function GameplayService._movePlayerToScene(self: any, player: Player, sceneId: string)
 	if self.checkpoints:Set(player, sceneId) then
 		if not self.checkpoints:Respawn(player) then
-			task.spawn(function()
-				player.CharacterAdded:Wait()
-				if self:_isProtagonist(player) then
-					self.checkpoints:Respawn(player)
+			local connection: RBXScriptConnection?
+			connection = player.CharacterAdded:Connect(function()
+				if connection then
+					connection:Disconnect()
+					connection = nil
+				end
+				task.defer(function()
+					if player.Parent == Players and self:_isProtagonist(player) then
+						self.checkpoints:Respawn(player)
+					end
+				end)
+			end)
+			task.delay(10, function()
+				if connection then
+					connection:Disconnect()
+					connection = nil
 				end
 			end)
 		end
@@ -258,9 +295,21 @@ function GameplayService._onStateChanged(self: any, state: string)
 	)
 	self.bella:SetActive(state == Contract.States.BellaChase)
 	self.evilRambo:SetActive(state == Contract.States.FieldHunt)
+	for _, prompt in self.mazePrompts do
+		prompt.Enabled = state == Contract.States.BellaChase
+	end
+	for _, prompt in self.storyPrompts do
+		prompt.Enabled = state == Contract.States.TowerClimb
+	end
+	for fragment, prompt in self.fragmentPrompts do
+		prompt.Enabled = state == Contract.States.FieldHunt
+			and fragment:GetAttribute("Collected") ~= true
+	end
 	if state == Contract.States.RoleLobby then
 		table.clear(self.fragments)
 		self.fragmentCount = 0
+		table.clear(self.towerSteps)
+		self.towerStepCount = 0
 		self.validator:ClearConsumed()
 		self.friendlyRambo:Reset()
 		self.bella:Reset()
@@ -270,7 +319,7 @@ function GameplayService._onStateChanged(self: any, state: string)
 			fragment:SetAttribute("Collected", false)
 			local prompt = self.fragmentPrompts[fragment]
 			if prompt then
-				prompt.Enabled = true
+				prompt.Enabled = false
 			end
 		end
 	end
@@ -280,7 +329,11 @@ function GameplayService._onStateChanged(self: any, state: string)
 	end
 	if state == Contract.States.MazeIntro then
 		self:_movePlayerToScene(player, Config.Story.MazeCheckpointSceneId)
+	elseif state == Contract.States.RoleLobby then
+		self:_movePlayerToScene(player, Config.Story.LobbyCheckpointSceneId)
 	elseif state == Contract.States.GuideEncounter then
+		table.clear(self.towerSteps)
+		self.towerStepCount = 0
 		self:_movePlayerToScene(player, Config.Story.TowerCheckpointSceneId)
 	elseif state == Contract.States.FieldHunt then
 		self:_movePlayerToScene(player, Config.Story.FieldCheckpointSceneId)
@@ -289,11 +342,8 @@ function GameplayService._onStateChanged(self: any, state: string)
 	end
 end
 
-function GameplayService._resetRun(self: any, player: Player?)
+function GameplayService._resetRun(self: any)
 	self.storyService:ResetToLobby("Replay")
-	if player and self:_isProtagonist(player) then
-		self.storyService:StartFor(player)
-	end
 end
 
 function GameplayService.Start(self: any)
@@ -306,6 +356,9 @@ function GameplayService.Start(self: any)
 	for _, instance in CollectionService:GetTagged(Contract.Tags.LetterFragment) do
 		self:_bindFragment(instance)
 	end
+	for _, instance in CollectionService:GetTagged(Contract.Tags.ASMRStep) do
+		self:_bindTowerStep(instance)
+	end
 	CollectionService:GetInstanceAddedSignal(Contract.Tags.MazeExit):Connect(function(instance)
 		self:_bindMazeExit(instance)
 	end)
@@ -316,22 +369,45 @@ function GameplayService.Start(self: any)
 		:Connect(function(instance)
 			self:_bindFragment(instance)
 		end)
+	CollectionService:GetInstanceAddedSignal(Contract.Tags.ASMRStep):Connect(function(instance)
+		self:_bindTowerStep(instance)
+	end)
 
 	self.storyService:ObserveChanged(function(state)
 		self:_onStateChanged(state)
 	end)
 
 	self.remotes[Contract.ClientEvents.CinematicFinished].OnServerEvent:Connect(
-		function(player, cueId)
-			if not self:_isProtagonist(player) or typeof(cueId) ~= "string" then
+		function(player, payload)
+			if not self:_isProtagonist(player) or typeof(payload) ~= "table" then
 				return
 			end
-			if not self.validator:AllowRate(player, "CinematicFinished", 4, 2) then
+			local cueId = payload.cue
+			local revision = payload.revision
+			if typeof(cueId) ~= "string" or typeof(revision) ~= "number" then
 				return
 			end
-			local transition = cinematicTransitions[self.storyService:GetState()]
-			if transition and transition.cue == cueId then
-				self.storyService:Transition(transition.next, `Cinematic:{cueId}`)
+			if not self.validator:AllowAction(player, Contract.ClientEvents.CinematicFinished) then
+				return
+			end
+			local state = self.storyService:GetState()
+			local minimumSeconds = Config.Story.CinematicMinimumSeconds[state] or 0
+			if
+				not RuntimeRules.isCinematicAckValid(
+					state,
+					self.storyService:GetRevision(),
+					self.storyService:GetStateEnteredAt(),
+					cueId,
+					revision,
+					os.clock(),
+					minimumSeconds
+				)
+			then
+				return
+			end
+			local nextState = RuntimeRules.cinematicNextState(state)
+			if nextState then
+				self.storyService:Transition(nextState, `Cinematic:{cueId}`)
 			end
 		end
 	)
@@ -342,12 +418,7 @@ function GameplayService.Start(self: any)
 				not self:_isProtagonist(player)
 				or typeof(confirmed) ~= "boolean"
 				or not self.validator.IsStoryState(self.storyService, Contract.States.RevivePrompt)
-				or not self.validator:AllowRate(
-					player,
-					Contract.ClientEvents.ReviveConfirmed,
-					Config.Validation.RemoteBurstLimit,
-					Config.Validation.RemoteWindowSeconds
-				)
+				or not self.validator:AllowAction(player, Contract.ClientEvents.ReviveConfirmed)
 			then
 				return
 			end
@@ -365,9 +436,9 @@ function GameplayService.Start(self: any)
 		if
 			self:_isProtagonist(player)
 			and self.validator.IsStoryState(self.storyService, Contract.States.Credits)
-			and self.validator:AllowRate(player, Contract.ClientEvents.ReplayRequested, 1, 2)
+			and self.validator:AllowAction(player, Contract.ClientEvents.ReplayRequested)
 		then
-			self:_resetRun(player)
+			self:_resetRun()
 		end
 	end)
 end

@@ -11,12 +11,14 @@ CheckpointService.__index = CheckpointService
 export type CheckpointService = typeof(setmetatable(
 	{} :: {
 		checkpoints: { [Player]: CFrame },
+		spawns: { [string]: CFrame },
+		started: boolean,
 	},
 	CheckpointService
 ))
 
 function CheckpointService.new(): CheckpointService
-	return setmetatable({ checkpoints = {} }, CheckpointService)
+	return setmetatable({ checkpoints = {}, spawns = {}, started = false }, CheckpointService)
 end
 
 local function markerCFrame(marker: Instance): CFrame?
@@ -28,16 +30,45 @@ local function markerCFrame(marker: Instance): CFrame?
 	return nil
 end
 
-function CheckpointService.FindSceneSpawn(_self: CheckpointService, sceneId: string): CFrame?
+function CheckpointService._cacheMarker(self: CheckpointService, marker: Instance)
+	local sceneId = marker:GetAttribute(Contract.Attributes.SceneId)
+	local found = markerCFrame(marker)
+	if typeof(sceneId) == "string" and found then
+		self.spawns[sceneId] = found
+	end
+end
+
+function CheckpointService.Start(self: CheckpointService)
+	if self.started then
+		return
+	end
+	self.started = true
 	for _, marker in CollectionService:GetTagged(Contract.Tags.SceneSpawn) do
-		if marker:GetAttribute(Contract.Attributes.SceneId) == sceneId then
-			local found = markerCFrame(marker)
-			if found then
-				return found
+		self:_cacheMarker(marker)
+	end
+	CollectionService:GetInstanceAddedSignal(Contract.Tags.SceneSpawn):Connect(function(marker)
+		self:_cacheMarker(marker)
+	end)
+	CollectionService:GetInstanceRemovedSignal(Contract.Tags.SceneSpawn):Connect(function(marker)
+		local sceneId = marker:GetAttribute(Contract.Attributes.SceneId)
+		if typeof(sceneId) ~= "string" then
+			return
+		end
+		self.spawns[sceneId] = nil
+		for _, candidate in CollectionService:GetTagged(Contract.Tags.SceneSpawn) do
+			if
+				candidate ~= marker
+				and candidate:GetAttribute(Contract.Attributes.SceneId) == sceneId
+			then
+				self:_cacheMarker(candidate)
+				break
 			end
 		end
-	end
-	return nil
+	end)
+end
+
+function CheckpointService.FindSceneSpawn(self: CheckpointService, sceneId: string): CFrame?
+	return self.spawns[sceneId]
 end
 
 function CheckpointService.Set(self: CheckpointService, player: Player, sceneId: string): boolean

@@ -1,6 +1,7 @@
 --!strict
 --[[
-	Local ASMR tower step sounds with per-step IDs and debounce.
+	Local ASMR tower step sounds with per-step IDs, debounce, and progress callback.
+	Volumes vary slightly by step index so feedback feels restrained but not identical.
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -13,12 +14,16 @@ local ContentAudio = require(script.Parent:WaitForChild("ContentAudio"))
 local ASMRStepListener = {}
 ASMRStepListener.__index = ASMRStepListener
 
+export type ProgressHandler = (step: number, total: number) -> ()
+
 export type ASMRStepListener = typeof(setmetatable(
 	{} :: {
 		_enabled: boolean,
 		_debounceSeconds: number,
 		_lastPlayed: { [Instance]: number },
 		_connections: { RBXScriptConnection },
+		_highestStep: number,
+		_onProgress: ProgressHandler?,
 	},
 	ASMRStepListener
 ))
@@ -29,7 +34,13 @@ function ASMRStepListener.new(debounceSeconds: number?): ASMRStepListener
 		_debounceSeconds = debounceSeconds or 0.45,
 		_lastPlayed = {},
 		_connections = {},
+		_highestStep = 0,
+		_onProgress = nil,
 	}, ASMRStepListener)
+end
+
+function ASMRStepListener:setProgressHandler(handler: ProgressHandler?)
+	self._onProgress = handler
 end
 
 local function resolveSoundId(part: BasePart): string
@@ -49,6 +60,12 @@ local function resolveSoundId(part: BasePart): string
 	return "rbxassetid://0"
 end
 
+local function volumeForStep(index: number): number
+	-- Subtle per-step variance (restrained ASMR feel) without needing unique assets yet.
+	local wave = 0.5 + 0.08 * math.sin(index * 1.7)
+	return math.clamp(wave, 0.42, 0.62)
+end
+
 function ASMRStepListener:_onTouched(part: BasePart, hit: BasePart)
 	if not self._enabled then
 		return
@@ -66,8 +83,17 @@ function ASMRStepListener:_onTouched(part: BasePart, hit: BasePart)
 	end
 	self._lastPlayed[part] = now
 
+	local sequenceIndex = part:GetAttribute("SequenceIndex")
+	local stepIndex = if typeof(sequenceIndex) == "number" then sequenceIndex else 0
 	local soundId = resolveSoundId(part)
-	ContentAudio.safePlay(soundId, 0.55, part)
+	ContentAudio.safePlay(soundId, volumeForStep(math.max(stepIndex, 1)), part)
+
+	if stepIndex > self._highestStep then
+		self._highestStep = stepIndex
+		if self._onProgress then
+			self._onProgress(stepIndex, ContentConfig.towerStepCount)
+		end
+	end
 end
 
 function ASMRStepListener:_bindPart(part: Instance)
@@ -87,6 +113,7 @@ function ASMRStepListener:start()
 		return
 	end
 	self._enabled = true
+	self._highestStep = 0
 
 	for _, tagged in CollectionService:GetTagged("ASMRStep") do
 		self:_bindPart(tagged)
@@ -107,6 +134,7 @@ function ASMRStepListener:stop()
 	end
 	table.clear(self._connections)
 	table.clear(self._lastPlayed)
+	self._highestStep = 0
 end
 
 function ASMRStepListener:reset()

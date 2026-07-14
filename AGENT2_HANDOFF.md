@@ -29,6 +29,28 @@ Agent 1 files left untouched: `SystemsConfig`, `StoryContract`, all `Services/**
 
 See `art/export/MANIFEST.md` — lobby/maze/tower/farm + Bella/Rambo/Gigi/Robber/fragments.
 
+## Reduced motion handoff (runtime agent)
+
+Query from owned client module (do **not** invent a parallel flag):
+
+```luau
+local SessionPreferences = require(GameClient.Controls.SessionPreferences)
+if SessionPreferences.isReducedMotion() then
+	-- skip camera shake / soften long cinematic pans
+end
+```
+
+Feedback, GuiShell, `CinematicPlayer`, and `StoryPresenter` now honor this preference.
+
+## Letter twist
+
+`LetterPanel` no longer appends the twist paragraph (API `includeTwist` kept). Twist still appears once via StoryPresenter subtitle. Runtime agent may consolidate later.
+
+## Studio docs
+
+- `docs/STUDIO_PREFLIGHT.md` — marketplace ownership + InsertService
+- `docs/QA_MATRIX.md` — manual device / role matrix
+
 ## Rojo place location
 
 No separate `.rbxl` was committed. Build with:

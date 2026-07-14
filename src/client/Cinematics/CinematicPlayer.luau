@@ -1,6 +1,7 @@
 --!strict
 --[[
 	First-person cinematic runner with fade + camera restore.
+	Uses a generation token so reset/replay/overlapping cues cannot complete stale work.
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -10,6 +11,8 @@ local TweenService = game:GetService("TweenService")
 
 local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChild("SharedAccess"))
 local ContentConfig = SharedAccess.requireContentConfig()
+local SessionPreferences =
+	require(script.Parent.Parent:WaitForChild("Controls"):WaitForChild("SessionPreferences"))
 
 type DialogueLine = {
 	id: string,
@@ -21,21 +24,22 @@ type DialogueLine = {
 export type SubtitleSink = (speaker: string?, text: string) -> ()
 export type ClearSubtitle = () -> ()
 
+type CinematicInternal = {
+	_playing: boolean,
+	_generation: number,
+	_fadeGui: ScreenGui?,
+	_fadeFrame: Frame?,
+	_savedCameraType: Enum.CameraType?,
+	_savedCameraCFrame: CFrame?,
+	_subtitle: SubtitleSink?,
+	_clearSubtitle: ClearSubtitle?,
+	_shakeConnection: RBXScriptConnection?,
+}
+
 local CinematicPlayer = {}
 CinematicPlayer.__index = CinematicPlayer
 
-export type CinematicPlayer = typeof(setmetatable(
-	{} :: {
-		_playing: boolean,
-		_fadeGui: ScreenGui?,
-		_fadeFrame: Frame?,
-		_savedCameraType: Enum.CameraType?,
-		_savedCameraCFrame: CFrame?,
-		_subtitle: SubtitleSink?,
-		_clearSubtitle: ClearSubtitle?,
-	},
-	CinematicPlayer
-))
+export type CinematicPlayer = typeof(setmetatable({} :: CinematicInternal, CinematicPlayer))
 
 local function findDialogue(subtitleId: string?): (string?, string?)
 	if subtitleId == nil then
@@ -72,7 +76,6 @@ local function findMarker(markerId: string): BasePart?
 			return tagged
 		end
 	end
-	-- Ambush / named fallbacks
 	for _, tagged in CollectionService:GetTagged("MazeExit") do
 		if tagged:IsA("BasePart") and markerId == "KidnapStart" then
 			return tagged
@@ -84,21 +87,27 @@ end
 function CinematicPlayer.new(): CinematicPlayer
 	return setmetatable({
 		_playing = false,
-		_fadeGui = nil,
-		_fadeFrame = nil,
-		_savedCameraType = nil,
-		_savedCameraCFrame = nil,
-		_subtitle = nil,
-		_clearSubtitle = nil,
+		_generation = 0,
+		_fadeGui = nil :: ScreenGui?,
+		_fadeFrame = nil :: Frame?,
+		_savedCameraType = nil :: Enum.CameraType?,
+		_savedCameraCFrame = nil :: CFrame?,
+		_subtitle = nil :: SubtitleSink?,
+		_clearSubtitle = nil :: ClearSubtitle?,
+		_shakeConnection = nil :: RBXScriptConnection?,
 	}, CinematicPlayer)
 end
 
-function CinematicPlayer:bindSubtitles(setSubtitle: SubtitleSink, clearSubtitle: ClearSubtitle)
+function CinematicPlayer.bindSubtitles(
+	self: CinematicPlayer,
+	setSubtitle: SubtitleSink,
+	clearSubtitle: ClearSubtitle
+)
 	self._subtitle = setSubtitle
 	self._clearSubtitle = clearSubtitle
 end
 
-function CinematicPlayer:_ensureFade()
+function CinematicPlayer._ensureFade(self: CinematicPlayer)
 	if self._fadeGui then
 		return
 	end
@@ -122,7 +131,37 @@ function CinematicPlayer:_ensureFade()
 	self._fadeFrame = frame
 end
 
-function CinematicPlayer:_tweenFade(transparency: number, duration: number)
+function CinematicPlayer._stopShake(self: CinematicPlayer)
+	local conn = self._shakeConnection
+	self._shakeConnection = nil
+	if conn ~= nil then
+		pcall(function()
+			conn:Disconnect()
+		end)
+	end
+end
+
+function CinematicPlayer._stillCurrent(self: CinematicPlayer, selfGeneration: number): boolean
+	return self._generation == selfGeneration
+end
+
+function CinematicPlayer._tweenFade(
+	self: CinematicPlayer,
+	transparency: number,
+	duration: number,
+	selfGeneration: number
+)
+	if not self:_stillCurrent(selfGeneration) then
+		return
+	end
+	if SessionPreferences.shouldSkipMotionEffects() then
+		self:_ensureFade()
+		local frame = self._fadeFrame
+		if frame then
+			frame.BackgroundTransparency = transparency
+		end
+		return
+	end
 	self:_ensureFade()
 	local frame = self._fadeFrame
 	if frame == nil then
@@ -137,7 +176,7 @@ function CinematicPlayer:_tweenFade(transparency: number, duration: number)
 	tween.Completed:Wait()
 end
 
-function CinematicPlayer:_lockCamera(target: CFrame)
+function CinematicPlayer._lockCamera(self: CinematicPlayer, target: CFrame)
 	local camera = workspace.CurrentCamera
 	if camera == nil then
 		return
@@ -150,7 +189,7 @@ function CinematicPlayer:_lockCamera(target: CFrame)
 	camera.CFrame = target
 end
 
-function CinematicPlayer:_restoreCamera()
+function CinematicPlayer._restoreCamera(self: CinematicPlayer)
 	local camera = workspace.CurrentCamera
 	if camera == nil then
 		return
@@ -160,19 +199,30 @@ function CinematicPlayer:_restoreCamera()
 	else
 		camera.CameraType = Enum.CameraType.Custom
 	end
+	if self._savedCameraCFrame then
+		camera.CFrame = self._savedCameraCFrame
+	end
 	self._savedCameraType = nil
 	self._savedCameraCFrame = nil
 end
 
-function CinematicPlayer:isPlaying(): boolean
+function CinematicPlayer.isPlaying(self: CinematicPlayer): boolean
 	return self._playing
 end
 
-function CinematicPlayer:playSequence(sequenceName: string, onComplete: (() -> ())?)
-	if self._playing then
-		return
-	end
+function CinematicPlayer._beginPlayback(self: CinematicPlayer): number
+	self:_stopShake()
+	local nextGeneration = self._generation + 1
+	self._generation = nextGeneration
+	self._playing = true
+	return nextGeneration
+end
 
+function CinematicPlayer.playSequence(
+	self: CinematicPlayer,
+	sequenceName: string,
+	onComplete: (() -> ())?
+)
 	local steps = ContentConfig.cinematics[sequenceName]
 	if steps == nil then
 		warn(`[Cinematic] Unknown sequence {sequenceName}`)
@@ -182,10 +232,16 @@ function CinematicPlayer:playSequence(sequenceName: string, onComplete: (() -> (
 		return
 	end
 
-	self._playing = true
+	local generation = self:_beginPlayback()
 	task.spawn(function()
 		for _, step in steps do
-			self:_tweenFade(0, step.fadeInSeconds)
+			if not self:_stillCurrent(generation) then
+				return
+			end
+			self:_tweenFade(0, step.fadeInSeconds, generation)
+			if not self:_stillCurrent(generation) then
+				return
+			end
 
 			local marker = findMarker(step.markerId)
 			if marker then
@@ -200,20 +256,32 @@ function CinematicPlayer:playSequence(sequenceName: string, onComplete: (() -> (
 				self._subtitle(speaker, text)
 			end
 
-			self:_tweenFade(1, math.min(step.fadeOutSeconds, 0.35))
+			self:_tweenFade(1, math.min(step.fadeOutSeconds, 0.35), generation)
+			if not self:_stillCurrent(generation) then
+				return
+			end
 			task.wait(
 				math.max(step.durationSeconds - step.fadeInSeconds - step.fadeOutSeconds, 0.2)
 			)
+			if not self:_stillCurrent(generation) then
+				return
+			end
 
 			if self._clearSubtitle then
 				self._clearSubtitle()
 			end
-			self:_tweenFade(0, 0) -- hold black briefly between beats when configured
-			self:_tweenFade(1, step.fadeOutSeconds)
+			self:_tweenFade(0, 0, generation)
+			self:_tweenFade(1, step.fadeOutSeconds, generation)
 		end
 
+		if not self:_stillCurrent(generation) then
+			return
+		end
 		self:_restoreCamera()
-		self:_tweenFade(1, 0.2)
+		self:_tweenFade(1, 0.2, generation)
+		if not self:_stillCurrent(generation) then
+			return
+		end
 		self._playing = false
 		if onComplete then
 			onComplete()
@@ -221,16 +289,21 @@ function CinematicPlayer:playSequence(sequenceName: string, onComplete: (() -> (
 	end)
 end
 
-function CinematicPlayer:playDogFightSilhouette(onComplete: (() -> ())?)
-	-- Extra motion pass: shakes camera toward FightSilhouette without gore.
+function CinematicPlayer.playDogFightSilhouette(self: CinematicPlayer, onComplete: (() -> ())?)
 	self:playSequence("dogFight", function()
+		if SessionPreferences.shouldSkipMotionEffects() then
+			if onComplete then
+				onComplete()
+			end
+			return
+		end
+
+		local generation = self._generation
 		local t0 = os.clock()
-		local connection: RBXScriptConnection?
-		connection = RunService.RenderStepped:Connect(function()
-			if os.clock() - t0 > 0.8 then
-				if connection then
-					connection:Disconnect()
-				end
+		self:_stopShake()
+		self._shakeConnection = RunService.RenderStepped:Connect(function()
+			if not self:_stillCurrent(generation) or os.clock() - t0 > 0.8 then
+				self:_stopShake()
 				return
 			end
 			local cam = workspace.CurrentCamera
@@ -239,13 +312,19 @@ function CinematicPlayer:playDogFightSilhouette(onComplete: (() -> ())?)
 				cam.CFrame = cam.CFrame * CFrame.new(shake, 0, 0)
 			end
 		end)
-		if onComplete then
-			onComplete()
-		end
+
+		task.delay(0.8, function()
+			self:_stopShake()
+			if self:_stillCurrent(generation) and onComplete then
+				onComplete()
+			end
+		end)
 	end)
 end
 
-function CinematicPlayer:reset()
+function CinematicPlayer.reset(self: CinematicPlayer)
+	self:_stopShake()
+	self._generation = self._generation + 1
 	self._playing = false
 	self:_restoreCamera()
 	if self._fadeFrame then

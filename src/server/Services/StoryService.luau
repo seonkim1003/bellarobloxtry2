@@ -4,25 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
+local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local StoryService = {}
 StoryService.__index = StoryService
-
-local transitions: { [string]: { [string]: boolean } } = {
-	[Contract.States.RoleLobby] = { [Contract.States.MazeIntro] = true },
-	[Contract.States.MazeIntro] = { [Contract.States.BellaChase] = true },
-	[Contract.States.BellaChase] = { [Contract.States.RamboTaken] = true },
-	[Contract.States.RamboTaken] = { [Contract.States.GuideEncounter] = true },
-	[Contract.States.GuideEncounter] = { [Contract.States.TowerClimb] = true },
-	[Contract.States.TowerClimb] = { [Contract.States.RevivePrompt] = true },
-	[Contract.States.RevivePrompt] = { [Contract.States.Corruption] = true },
-	[Contract.States.Corruption] = { [Contract.States.FieldHunt] = true },
-	[Contract.States.FieldHunt] = { [Contract.States.LetterTheft] = true },
-	[Contract.States.LetterTheft] = { [Contract.States.DogFight] = true },
-	[Contract.States.DogFight] = { [Contract.States.Epilogue] = true },
-	[Contract.States.Epilogue] = { [Contract.States.LetterReveal] = true },
-	[Contract.States.LetterReveal] = { [Contract.States.Credits] = true },
-}
 
 export type StoryService = typeof(setmetatable(
 	{} :: {
@@ -30,6 +15,7 @@ export type StoryService = typeof(setmetatable(
 		roleService: any,
 		state: string,
 		revision: number,
+		stateEnteredAt: number,
 		changed: BindableEvent,
 	},
 	StoryService
@@ -41,6 +27,7 @@ function StoryService.new(remotes: { [string]: RemoteEvent }, roleService: any):
 		roleService = roleService,
 		state = Contract.States.RoleLobby,
 		revision = 0,
+		stateEnteredAt = os.clock(),
 		changed = Instance.new("BindableEvent"),
 	}, StoryService)
 end
@@ -62,9 +49,12 @@ function StoryService.GetRevision(self: StoryService): number
 	return self.revision
 end
 
+function StoryService.GetStateEnteredAt(self: StoryService): number
+	return self.stateEnteredAt
+end
+
 function StoryService.CanTransition(self: StoryService, nextState: string): boolean
-	local allowed = transitions[self.state]
-	return allowed ~= nil and allowed[nextState] == true
+	return RuntimeRules.canTransition(self.state, nextState)
 end
 
 function StoryService.Transition(self: StoryService, nextState: string, reason: string?): boolean
@@ -75,6 +65,7 @@ function StoryService.Transition(self: StoryService, nextState: string, reason: 
 	local previous = self.state
 	self.state = nextState
 	self.revision += 1
+	self.stateEnteredAt = os.clock()
 	self:_broadcast(Contract.Cues.StateChanged)
 	self.changed:Fire(nextState, previous, reason)
 	return true
@@ -90,6 +81,7 @@ end
 function StoryService.ResetToLobby(self: StoryService, reason: string?)
 	self.state = Contract.States.RoleLobby
 	self.revision += 1
+	self.stateEnteredAt = os.clock()
 	self:_broadcast(Contract.Cues.ReplayReset)
 	self.changed:Fire(self.state, nil, reason or "Reset")
 end

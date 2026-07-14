@@ -1,63 +1,39 @@
---!strict
+--!nocheck
+-- Lune's @lune modules are not part of the strict Roblox type definitions;
+-- see IntegrationContract.spec.luau for the same convention.
 --[[
-	Agent 2 Phase 1 content smoke tests (pure Luau / Lune, no filesystem requires).
-	Mirrors the frozen contract + ContentConfig expectations. Structural presence of
-	ContentConfig / GuiShell is guaranteed by luau-lsp analyze on src/.
+	Agent 2 content smoke tests (pure Luau / Lune).
+	Loads ContentConfig for structural + identifier uniqueness checks.
 ]]
 
-local storyStates = {
-	"RoleLobby",
-	"MazeIntro",
-	"BellaChase",
-	"RamboTaken",
-	"GuideEncounter",
-	"TowerClimb",
-	"RevivePrompt",
-	"Corruption",
-	"FieldHunt",
-	"LetterTheft",
-	"DogFight",
-	"Epilogue",
-	"LetterReveal",
-	"Credits",
-}
+local ContentConfig = require("../src/shared/ContentConfig")
 
-local requiredTags = {
-	"SceneSpawn",
-	"MazeExit",
-	"NPCSpawn",
-	"PatrolPoint",
-	"StoryTrigger",
-	"LetterFragment",
-	"ASMRStep",
-	"CinematicMarker",
-}
+local sceneOrder = { "Lobby", "Maze", "Tower", "Field", "Epilogue" }
+for index, sceneId in sceneOrder do
+	local layout = ContentConfig.sceneLayouts[sceneId]
+	assert(layout ~= nil, `missing scene layout for {sceneId}`)
+	if index > 1 then
+		local previous = ContentConfig.sceneLayouts[sceneOrder[index - 1]]
+		local gap = layout.position.x - previous.position.x
+		assert(
+			gap >= ContentConfig.worldLayout.SceneSpacing,
+			`scene {sceneId} is only {gap} studs from its predecessor`
+		)
+	end
+end
 
-local requiredAttributes = {
-	"SceneId",
-	"MarkerId",
-	"NPCType",
-	"FragmentId",
-	"SoundId",
-	"SequenceIndex",
-}
+assert(
+	ContentConfig.worldLayout.MaxMarketplaceExtent < ContentConfig.worldLayout.SceneSpacing,
+	"marketplace maps must fit inside isolated scene cells"
+)
 
-local serverSignals = {
-	"StoryCue",
-	"ObjectiveUpdate",
-	"FragmentUpdate",
-	"RoleUpdate",
-	"AdminDiagnostics",
-}
+local storyStates = ContentConfig.storyStates
+local requiredTags = ContentConfig.requiredTags
+local requiredAttributes = ContentConfig.requiredAttributes
+local serverSignals = ContentConfig.serverSignals
+local clientRequests = ContentConfig.clientRequests
+local sceneIds = ContentConfig.sceneIds
 
-local clientRequests = {
-	"CinematicFinished",
-	"ReviveConfirmed",
-	"ReplayRequested",
-	"RoleReady",
-}
-
-local sceneIds = { "Lobby", "Maze", "Tower", "Field", "Epilogue" }
 local uiShells = {
 	"Title",
 	"Objective",
@@ -68,6 +44,10 @@ local uiShells = {
 	"Credits",
 	"Replay",
 	"Leave",
+	"LeaveConfirm",
+	"ReducedMotion",
+	"TowerProgress",
+	"ThreatState",
 }
 
 assert(#storyStates == 14, "expected 14 story states")
@@ -76,7 +56,7 @@ assert(#requiredAttributes == 6, "expected 6 required attributes")
 assert(#serverSignals == 5, "expected 5 server signals")
 assert(#clientRequests == 4, "expected 4 client requests")
 assert(#sceneIds == 5, "expected 5 scenes")
-assert(#uiShells == 9, "expected 9 UI shells")
+assert(#uiShells == 13, "expected 13 UI shells")
 
 local seen: { [string]: boolean } = {}
 for _, state in storyStates do
@@ -84,14 +64,33 @@ for _, state in storyStates do
 	seen[state] = true
 end
 
-local towerStepCount = 28
-local towerFlights = 7
-assert(towerStepCount >= 24 and towerStepCount <= 32, "ASMR steps must be 24–32")
-assert(towerFlights >= 6 and towerFlights <= 8, "ASMR flights must be 6–8")
-assert(towerStepCount // towerFlights >= 3, "steps should cover right-angle flights")
+assert(ContentConfig.towerStepCount >= 24 and ContentConfig.towerStepCount <= 32, "ASMR steps")
+assert(ContentConfig.towerFlights >= 6 and ContentConfig.towerFlights <= 8, "ASMR flights")
+assert(
+	ContentConfig.towerStepCount // ContentConfig.towerFlights >= 3,
+	"steps should cover right-angle flights"
+)
 
-local finalTwist =
-	"The journey was never about losing weight. It was about who gets remembered when the fog clears."
+local finalTwist = ContentConfig.finalLetterText.twist
 assert(#finalTwist > 20, "final letter twist must be drafted")
+
+assert(ContentConfig.ui.touchMinButtonPx >= 64, "touch min size")
+assert(ContentConfig.accessibility.reducedMotionDefault == false, "motion default")
+
+local placeholderIds: { [string]: boolean } = {}
+for _, entry in ContentConfig.placeholderObjects do
+	local key = `{entry.sceneId}/{entry.name}`
+	assert(placeholderIds[key] == nil, `duplicate content id {key}`)
+	placeholderIds[key] = true
+end
+
+-- manifest consistency
+for key, id in pairs(ContentConfig.assets.marketplace.scenes) do
+	assert(ContentConfig.assets.models[key] == `rbxassetid://{id}`, `manifest mismatch {key}`)
+end
+for key, id in pairs(ContentConfig.assets.marketplace.characters) do
+	local modelKey = key == "ramboFriendly" and "rambo" or key
+	assert(ContentConfig.assets.models[modelKey] == `rbxassetid://{id}`, `manifest mismatch {key}`)
+end
 
 print("content smoke test passed")

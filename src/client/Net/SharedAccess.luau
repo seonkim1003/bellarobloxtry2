@@ -7,31 +7,49 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local SharedAccess = {}
 
+local function asFolder(instance: Instance?): Folder?
+	if instance and instance:IsA("Folder") then
+		return instance
+	end
+	return nil
+end
+
 function SharedAccess.getSharedFolder(timeoutSeconds: number?): Folder
 	local timeout = timeoutSeconds or 10
-	local existing = ReplicatedStorage:FindFirstChild("GameShared")
-	if existing and existing:IsA("Folder") then
-		return existing
-	end
-	existing = ReplicatedStorage:FindFirstChild("Shared")
-	if existing and existing:IsA("Folder") then
+	local existing = asFolder(ReplicatedStorage:FindFirstChild("GameShared"))
+		or asFolder(ReplicatedStorage:FindFirstChild("Shared"))
+	if existing then
 		return existing
 	end
 
 	local deadline = os.clock() + timeout
 	while os.clock() < deadline do
-		local gameShared = ReplicatedStorage:FindFirstChild("GameShared")
-		if gameShared and gameShared:IsA("Folder") then
-			return gameShared
-		end
-		local shared = ReplicatedStorage:FindFirstChild("Shared")
-		if shared and shared:IsA("Folder") then
-			return shared
+		local found = asFolder(ReplicatedStorage:FindFirstChild("GameShared"))
+			or asFolder(ReplicatedStorage:FindFirstChild("Shared"))
+		if found then
+			return found
 		end
 		task.wait(0.1)
 	end
 
-	return ReplicatedStorage:WaitForChild("GameShared") :: Folder
+	-- Prefer GameShared, but accept Shared rather than yielding forever on a scaffold-only tree.
+	local late = asFolder(ReplicatedStorage:FindFirstChild("GameShared"))
+		or asFolder(ReplicatedStorage:FindFirstChild("Shared"))
+	if late then
+		return late
+	end
+
+	local waited = ReplicatedStorage:WaitForChild("GameShared", 1)
+	local waitedFolder = asFolder(waited)
+	if waitedFolder then
+		return waitedFolder
+	end
+	local sharedWaited = ReplicatedStorage:WaitForChild("Shared", 1)
+	local sharedFolder = asFolder(sharedWaited)
+	if sharedFolder then
+		return sharedFolder
+	end
+	error("Neither ReplicatedStorage.GameShared nor ReplicatedStorage.Shared is available")
 end
 
 function SharedAccess.requireContentConfig(): any

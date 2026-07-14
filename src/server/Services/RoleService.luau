@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
 local Config = require(GameShared:WaitForChild("SystemsConfig"))
+local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local RoleService = {}
 RoleService.__index = RoleService
@@ -100,6 +101,9 @@ function RoleService._considerProtagonist(self: RoleService, player: Player)
 end
 
 function RoleService._onPlayerAdded(self: RoleService, player: Player)
+	if self.records[player] then
+		return
+	end
 	self.records[player] = {
 		role = Contract.Roles.Unassigned,
 		joinedAt = os.clock(),
@@ -118,10 +122,27 @@ function RoleService._onPlayerAdded(self: RoleService, player: Player)
 		end
 		if not self.protagonist then
 			self:_considerProtagonist(player)
-		else
-			player:Kick("This server already has an active player.")
 		end
+		-- A second admitted player remains an observer/waiting participant. They
+		-- are promoted automatically if the protagonist leaves.
 	end)
+end
+
+function RoleService._trackedCount(self: RoleService): number
+	local count = 0
+	for _ in self.records do
+		count += 1
+	end
+	return count
+end
+
+function RoleService._admit(self: RoleService, player: Player): boolean
+	if not RuntimeRules.canAdmitPlayer(self:_trackedCount(), Config.Roles.MaximumPlayers) then
+		player:Kick("This server is full.")
+		return false
+	end
+	self:_onPlayerAdded(player)
+	return true
 end
 
 function RoleService._onPlayerRemoving(self: RoleService, player: Player)
@@ -145,33 +166,29 @@ function RoleService.Start(self: RoleService)
 	end
 	self.started = true
 	Players.PlayerAdded:Connect(function(player)
-		local count = 0
-		for _ in self.records do
-			count += 1
-		end
-		if count >= Config.Roles.MaximumPlayers then
-			player:Kick("This server is full.")
-			return
-		end
-		self:_onPlayerAdded(player)
+		self:_admit(player)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		self:_onPlayerRemoving(player)
 	end)
 	for _, player in Players:GetPlayers() do
-		self:_onPlayerAdded(player)
+		self:_admit(player)
 	end
 end
 
-function RoleService.MarkReady(self: RoleService, player: Player)
+function RoleService.MarkReady(self: RoleService, player: Player): boolean
 	local record = self.records[player]
 	if not record then
-		return
+		return false
 	end
 	record.ready = true
-	-- Readiness only confirms that the client loaded. The claim-delay window remains
-	-- authoritative so a newly joined observer has time to authenticate in Phase 4.
 	self:_send(player)
+	return true
+end
+
+function RoleService.IsReady(self: RoleService, player: Player): boolean
+	local record = self.records[player]
+	return record ~= nil and record.ready
 end
 
 function RoleService.PromoteToAdmin(self: RoleService, player: Player): boolean

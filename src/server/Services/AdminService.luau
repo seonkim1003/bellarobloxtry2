@@ -106,6 +106,21 @@ function AdminService._remember(
 	end
 end
 
+function AdminService._applyDescendant(self: any, state: any, descendant: Instance)
+	if descendant:IsA("BasePart") then
+		self:_remember(state, descendant, "CanCollide", descendant.CanCollide)
+		descendant.CanCollide = false
+		if state.invisible then
+			self:_remember(state, descendant, "Transparency", descendant.Transparency)
+			descendant.Transparency = 1
+		end
+	elseif (descendant:IsA("Decal") or descendant:IsA("Texture")) and state.invisible then
+		local visual = descendant :: any
+		self:_remember(state, descendant, "Transparency", visual.Transparency)
+		visual.Transparency = 1
+	end
+end
+
 function AdminService._applyCharacter(self: any, player: Player)
 	local state = self.states[player]
 	local character = player.Character
@@ -113,18 +128,7 @@ function AdminService._applyCharacter(self: any, player: Player)
 		return
 	end
 	for _, descendant in character:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			self:_remember(state, descendant, "CanCollide", descendant.CanCollide)
-			descendant.CanCollide = false
-			if state.invisible then
-				self:_remember(state, descendant, "Transparency", descendant.Transparency)
-				descendant.Transparency = 1
-			end
-		elseif (descendant:IsA("Decal") or descendant:IsA("Texture")) and state.invisible then
-			local visual = descendant :: any
-			self:_remember(state, descendant, "Transparency", visual.Transparency)
-			visual.Transparency = 1
-		end
+		self:_applyDescendant(state, descendant)
 	end
 
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -153,6 +157,25 @@ function AdminService._applyCharacter(self: any, player: Player)
 	end
 end
 
+function AdminService._observeCharacter(self: any, player: Player)
+	local state = self.states[player]
+	if not state then
+		return
+	end
+	if state.descendantConnection then
+		state.descendantConnection:Disconnect()
+		state.descendantConnection = nil
+	end
+	local character = player.Character
+	if character then
+		state.descendantConnection = character.DescendantAdded:Connect(function(descendant)
+			if self:_isAdmin(player) then
+				self:_applyDescendant(state, descendant)
+			end
+		end)
+	end
+end
+
 function AdminService._makeAdmin(self: any, player: Player)
 	if not self.states[player] then
 		self.states[player] = {
@@ -161,6 +184,7 @@ function AdminService._makeAdmin(self: any, player: Player)
 			vertical = 0,
 			originals = {},
 			characterConnection = nil,
+			descendantConnection = nil,
 		}
 	end
 	local state = self.states[player]
@@ -170,12 +194,14 @@ function AdminService._makeAdmin(self: any, player: Player)
 				if self:_isAdmin(player) then
 					table.clear(state.originals)
 					self:_applyCharacter(player)
+					self:_observeCharacter(player)
 				end
 			end)
 		end)
 	end
 	player:SetAttribute("AdminObserver", true)
 	self:_applyCharacter(player)
+	self:_observeCharacter(player)
 end
 
 function AdminService._removeAdmin(self: any, player: Player)
@@ -183,6 +209,9 @@ function AdminService._removeAdmin(self: any, player: Player)
 	local state = self.states[player]
 	if state and state.characterConnection then
 		state.characterConnection:Disconnect()
+	end
+	if state and state.descendantConnection then
+		state.descendantConnection:Disconnect()
 	end
 	self.states[player] = nil
 	player:SetAttribute("AdminObserver", nil)
@@ -328,7 +357,6 @@ function AdminService.Start(self: any)
 			if not self:_isAdmin(player) then
 				continue
 			end
-			self:_applyCharacter(player)
 			local character = player.Character
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 			local root = character and character:FindFirstChild("HumanoidRootPart")

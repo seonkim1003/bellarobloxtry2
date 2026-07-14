@@ -67,6 +67,7 @@ function PlaceholderMount.mountMissingMarkers()
 				entry.name,
 				SCENE_COLORS[entry.sceneId] or Color3.fromRGB(180, 180, 180)
 			)
+			part:SetAttribute("ContentPlaceholder", true)
 			part.Parent = sceneModel
 			Tagging.applyMarker(part, entry.tag, entry.attributes)
 			created += 1

@@ -4,7 +4,9 @@
     {
       "name": "FieldSpawn",
       "className": "Part",
-      "tags": ["SceneSpawn"],
+      "tags": [
+        "SceneSpawn"
+      ],
       "attributes": {
         "MarkerId": "FieldEntrance",
         "SceneId": "FieldEntrance"
@@ -12,14 +14,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          220, 1, 0
+        "Size": [
+          4,
+          2,
+          4
         ],
-        "Color": [0.3, 0.55, 0.35],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3525,
+          1,
+          -70
+        ],
+        "Color": [
+          0.3,
+          0.55,
+          0.35
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -27,7 +45,9 @@
     {
       "name": "EvilRamboSpawn",
       "className": "Part",
-      "tags": ["NPCSpawn"],
+      "tags": [
+        "NPCSpawn"
+      ],
       "attributes": {
         "MarkerId": "EvilRamboSpawn",
         "NPCType": "EvilRambo",
@@ -36,14 +56,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          240, 1, 20
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.4, 0.2, 0.15],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3655,
+          1,
+          55
+        ],
+        "Color": [
+          0.4,
+          0.2,
+          0.15
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -51,7 +87,9 @@
     {
       "name": "PatrolA",
       "className": "Part",
-      "tags": ["PatrolPoint"],
+      "tags": [
+        "PatrolPoint"
+      ],
       "attributes": {
         "MarkerId": "PatrolA",
         "NPCType": "EvilRambo",
@@ -61,14 +99,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          230, 1, 10
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.25, 0.5, 0.3],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3555,
+          1,
+          35
+        ],
+        "Color": [
+          0.25,
+          0.5,
+          0.3
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -76,7 +130,9 @@
     {
       "name": "PatrolB",
       "className": "Part",
-      "tags": ["PatrolPoint"],
+      "tags": [
+        "PatrolPoint"
+      ],
       "attributes": {
         "MarkerId": "PatrolB",
         "NPCType": "EvilRambo",
@@ -86,14 +142,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          250, 1, 0
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.25, 0.5, 0.3],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3655,
+          1,
+          55
+        ],
+        "Color": [
+          0.25,
+          0.5,
+          0.3
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -101,7 +173,9 @@
     {
       "name": "PatrolC",
       "className": "Part",
-      "tags": ["PatrolPoint"],
+      "tags": [
+        "PatrolPoint"
+      ],
       "attributes": {
         "MarkerId": "PatrolC",
         "NPCType": "EvilRambo",
@@ -111,14 +185,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          235, 1, -15
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.25, 0.5, 0.3],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3645,
+          1,
+          -35
+        ],
+        "Color": [
+          0.25,
+          0.5,
+          0.3
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -126,7 +216,9 @@
     {
       "name": "FragmentA",
       "className": "Part",
-      "tags": ["LetterFragment"],
+      "tags": [
+        "LetterFragment"
+      ],
       "attributes": {
         "FragmentId": "A",
         "MarkerId": "FragmentA",
@@ -135,14 +227,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          228, 1, -8
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.95, 0.85, 0.4],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3545,
+          1,
+          20
+        ],
+        "Color": [
+          0.95,
+          0.85,
+          0.4
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -150,7 +258,9 @@
     {
       "name": "FragmentB",
       "className": "Part",
-      "tags": ["LetterFragment"],
+      "tags": [
+        "LetterFragment"
+      ],
       "attributes": {
         "FragmentId": "B",
         "MarkerId": "FragmentB",
@@ -159,14 +269,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          248, 1, 12
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.95, 0.85, 0.4],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3610,
+          1,
+          60
+        ],
+        "Color": [
+          0.95,
+          0.85,
+          0.4
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -174,7 +300,9 @@
     {
       "name": "FragmentC",
       "className": "Part",
-      "tags": ["LetterFragment"],
+      "tags": [
+        "LetterFragment"
+      ],
       "attributes": {
         "FragmentId": "C",
         "MarkerId": "FragmentC",
@@ -183,14 +311,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          255, 1, -5
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.95, 0.85, 0.4],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3650,
+          1,
+          -55
+        ],
+        "Color": [
+          0.95,
+          0.85,
+          0.4
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -198,7 +342,9 @@
     {
       "name": "TheftMarker",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "TheftSteal",
         "SceneId": "Field",
@@ -207,14 +353,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          242, 2, 5
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.7, 0.4, 0.5],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3600,
+          2,
+          5
+        ],
+        "Color": [
+          0.7,
+          0.4,
+          0.5
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -222,7 +384,9 @@
     {
       "name": "TheftGigiMarker",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "TheftGigi",
         "SceneId": "Field",
@@ -231,15 +395,34 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2,2,2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 246,2,7],
+        "Size": [
+          2,
+          2,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3606,
+          2,
+          7
+        ],
         "Transparency": 1
       }
     },
     {
       "name": "FightSilhouetteMarker",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "FightSilhouette",
         "SceneId": "Field",
@@ -248,21 +431,62 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2,2,2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 248,2,10],
+        "Size": [
+          2,
+          2,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3612,
+          2,
+          10
+        ],
         "Transparency": 1
       }
     },
     {
       "name": "FieldFloor",
       "className": "Part",
-      "attributes": { "SceneId": "Field", "MarkerId": "FieldFloor" },
+      "attributes": {
+        "SceneId": "Field",
+        "MarkerId": "FieldFloor"
+      },
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [80.0, 1.0, 80.0],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 240,0,0],
-        "Color": [0.28, 0.4, 0.28],
+        "Size": [
+          180,
+          1,
+          180
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          3600,
+          0,
+          0
+        ],
+        "Color": [
+          0.28,
+          0.4,
+          0.28
+        ],
         "Material": "Grass"
       }
     }

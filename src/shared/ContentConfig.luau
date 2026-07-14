@@ -48,6 +48,9 @@ export type PlaceholderObject = {
 
 local PLACEHOLDER_SOUND = "rbxassetid://0"
 local PLACEHOLDER_IMAGE = "rbxassetid://0"
+-- Animations use their own placeholder namespace so audits never mistake a
+-- missing KeyframeSequence for a missing Sound (both resolve to id 0 today).
+local PLACEHOLDER_ANIMATION = "rbxassetid://0"
 
 local function rgb(r: number, g: number, b: number): RGB
 	return { r = r, g = g, b = b }
@@ -293,7 +296,7 @@ end
 
 local ContentConfig = {
 	projectTitle = "Bella and Rambo’s Weight Loss Journey",
-	version = "0.4.0-content",
+	version = "0.5.0-content",
 
 	storyStates = {
 		"RoleLobby",
@@ -389,20 +392,38 @@ local ContentConfig = {
 			field = "rbxassetid://13088916306",
 			letterFragments = "rbxassetid://118658326038279",
 		},
+		-- Animation asset IDs (NOT sounds). Remain placeholders until creator uploads.
 		animations = {
-			kidnapHold = PLACEHOLDER_SOUND,
-			reviveKneel = PLACEHOLDER_SOUND,
-			corruptionPulse = PLACEHOLDER_SOUND,
+			kidnapHold = PLACEHOLDER_ANIMATION,
+			reviveKneel = PLACEHOLDER_ANIMATION,
+			corruptionPulse = PLACEHOLDER_ANIMATION,
 		},
 	},
 
 	-- World placement for InsertService scene models (keeps gameplay markers nearby).
 	sceneLayouts = {
-		Lobby = { marketplaceKey = "lobby", position = { x = 0, y = 0, z = 0 } },
-		Maze = { marketplaceKey = "maze", position = { x = 70, y = 0, z = 10 } },
-		Tower = { marketplaceKey = "tower", position = { x = 150, y = 0, z = 10 } },
-		Field = { marketplaceKey = "field", position = { x = 240, y = 0, z = 0 } },
-		Epilogue = { marketplaceKey = nil, position = { x = 320, y = 0, z = 0 } },
+		-- Each story stage is an isolated gameplay cell. Marketplace maps are much
+		-- larger than the old placeholder floors, so small offsets caused maps,
+		-- NPC aggro, and pathfinding to bleed into adjacent stages.
+		Lobby = {
+			marketplaceKey = "lobby",
+			position = { x = 0, y = 0, z = 0 },
+			maxMarketplaceExtent = 160,
+		},
+		-- Maze and Tower use deterministic authored geometry because arbitrary
+		-- marketplace routes cannot be guaranteed to match gameplay markers.
+		Maze = { marketplaceKey = nil, position = { x = 1200, y = 0, z = 0 } },
+		Tower = { marketplaceKey = nil, position = { x = 2400, y = 0, z = 0 } },
+		Field = {
+			marketplaceKey = "field",
+			position = { x = 3600, y = 0, z = 0 },
+			maxMarketplaceExtent = 170,
+		},
+		Epilogue = { marketplaceKey = nil, position = { x = 4800, y = 0, z = 0 } },
+	},
+	worldLayout = {
+		SceneSpacing = 1200,
+		MaxMarketplaceExtent = 800,
 	},
 
 	sounds = {
@@ -599,6 +620,25 @@ local ContentConfig = {
 		reviveRefuse = "Stay down",
 		replayLabel = "Replay",
 		leaveLabel = "Leave",
+		readyLabel = "Ready",
+		readyIdle = "Not ready yet",
+		readyAccepted = "Ready — waiting for the story to begin",
+		leaveConfirmPrompt = "Leave the experience? You will be disconnected.",
+		leaveConfirmYes = "Leave",
+		leaveConfirmNo = "Stay",
+		reducedMotionOff = "Reduced motion: Off  [M / D-Pad ↓]",
+		reducedMotionOn = "Reduced motion: On  [M / D-Pad ↓]",
+		lobbyCapacityHint = "Two players max — one protagonist, one observer (or waiting).",
+		lobbyProtagonistHint = "You are the protagonist. Press Ready when both seats are set.",
+		lobbyObserverHint = "You are observing. Follow along — Ready confirms you are present.",
+		lobbyWaitingHint = "Waiting for role assignment. A second player can join as observer.",
+		towerProgressLabel = "Tower steps",
+		towerGoalStart = "Climb all 28 steps across 7 flights. Reach the top.",
+		towerGoalNearTop = "Almost there — the top door opens the next chapter.",
+		mazeExitHint = "Look for the pale exit glow — do not reverse back into Bella.",
+		threatSafe = "● Clear",
+		threatDetected = "⚠ DETECTED — move",
+		threatChase = "‼ CHASE — run",
 		creditsLines = {
 			"Bella and Rambo’s Weight Loss Journey",
 			"A short first-person Roblox horror experience",
@@ -606,7 +646,16 @@ local ContentConfig = {
 			"Thank you for playing",
 		},
 		touchSafeInsetScale = 0.04,
+		touchMinButtonPx = 72,
 		subtitleMaxWidthScale = 0.8,
+		minReadableTextPx = 14,
+	},
+
+	accessibility = {
+		reducedMotionDefault = false,
+		suppressCameraShakeWhenReduced = true,
+		softenVignetteWhenReduced = true,
+		shortenUiTweensWhenReduced = true,
 	},
 
 	placeholderObjects = placeholderObjects,
@@ -649,7 +698,16 @@ local ContentConfig = {
 	assetFallback = {
 		soundId = PLACEHOLDER_SOUND,
 		imageId = PLACEHOLDER_IMAGE,
+		animationId = PLACEHOLDER_ANIMATION,
 		note = "Missing assets stay silent/blank; presentation continues.",
+	},
+
+	-- Content package ownership (see also src/content/RojoMapping.luau).
+	contentOwnership = {
+		sharedConfig = "src/shared/ContentConfig.luau",
+		clientPresentation = "src/client",
+		rojoContentFolder = "src/content",
+		rojoContentPurpose = "ReplicatedStorage.Content ownership notes + future shared content modules (not runtime presentation).",
 	},
 }
 

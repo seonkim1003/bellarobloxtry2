@@ -20,6 +20,31 @@ for _, state in StoryContract.States do
 	assert(configuredStates[state], `ContentConfig is missing story state {state}`)
 end
 
+for name, remoteName in StoryContract.ServerEvents do
+	assert(
+		table.find(ContentConfig.serverSignals, remoteName) ~= nil,
+		`ContentConfig.serverSignals missing {name}={remoteName}`
+	)
+end
+for name, remoteName in StoryContract.ClientEvents do
+	assert(
+		table.find(ContentConfig.clientRequests, remoteName) ~= nil,
+		`ContentConfig.clientRequests missing {name}={remoteName}`
+	)
+end
+for name, tag in StoryContract.Tags do
+	assert(
+		table.find(ContentConfig.requiredTags, tag) ~= nil,
+		`ContentConfig.requiredTags missing {name}={tag}`
+	)
+end
+for name, attribute in StoryContract.Attributes do
+	assert(
+		table.find(ContentConfig.requiredAttributes, attribute) ~= nil,
+		`ContentConfig.requiredAttributes missing {name}={attribute}`
+	)
+end
+
 local expectedAcks = {
 	"MazeIntro",
 	"RamboTaken",
@@ -106,8 +131,10 @@ assert(
 )
 local presenterSource = fs.readFile("src/client/Presentation/StoryPresenter.luau")
 assert(
-	string.find(presenterSource, 'request("CinematicFinished", state)', 1, true),
-	"CinematicFinished must send the direct state string"
+	string.find(presenterSource, 'request("CinematicFinished"', 1, true)
+		and string.find(presenterSource, "cue = state", 1, true)
+		and string.find(presenterSource, "revision =", 1, true),
+	"CinematicFinished must send { cue, revision } for server-validated cinematic acks"
 )
 assert(
 	string.find(presenterSource, "d.gui.showRevive(false)", 1, true)

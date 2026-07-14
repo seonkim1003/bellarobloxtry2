@@ -23,6 +23,10 @@ function FriendlyRamboService.new(roleService: any)
 end
 
 function FriendlyRamboService._discover(self: any)
+	if self.agent and self.agent.model.Parent == nil then
+		self.agent:Cancel()
+		self.agent = nil
+	end
 	if not self.agent then
 		for _, candidate in CollectionService:GetTagged(Contract.Tags.NPCSpawn) do
 			if
@@ -99,6 +103,9 @@ end
 
 function FriendlyRamboService.SetActive(self: any, active: boolean)
 	self.active = active
+	if active then
+		self:_discover()
+	end
 	if not active and self.agent then
 		self.agent:Cancel()
 	end

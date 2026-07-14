@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
 local Config = require(GameShared:WaitForChild("SystemsConfig"))
+local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local Services = script.Parent:WaitForChild("Services")
 local RemoteRegistry = require(Services:WaitForChild("RemoteRegistry"))
@@ -22,6 +23,21 @@ local HostileNpcService = require(NPC:WaitForChild("HostileNpcService"))
 assert(Config.ContractVersion == Contract.Version, "SystemsConfig contract version mismatch")
 
 local remotes = RemoteRegistry.Create()
+
+local function waitForContentMount(timeoutSeconds: number): boolean
+	local deadline = os.clock() + timeoutSeconds
+	repeat
+		local contentModels = ReplicatedStorage:FindFirstChild("ContentModels")
+		if contentModels and contentModels:GetAttribute("Ready") == true then
+			return contentModels:GetAttribute("MountFailed") ~= true
+		end
+		task.wait(0.1)
+	until os.clock() >= deadline
+	warn("[Bootstrap] Content mount timed out; continuing with runtime fallbacks")
+	return false
+end
+
+waitForContentMount(Config.Startup.ContentMountTimeoutSeconds)
 local validator = Validation.new()
 local roles = RoleService.new(remotes)
 local story = StoryService.new(remotes, roles)
@@ -30,8 +46,9 @@ local gameplay: any = nil
 local friendlyRambo = FriendlyRamboService.new(roles)
 local bella = HostileNpcService.new(roles, "Bella", Config.NPC.Bella, function(player, npcType)
 	if gameplay then
-		gameplay:_onCatch(player, npcType)
+		return gameplay:_onCatch(player, npcType)
 	end
+	return false
 end)
 local evilRambo = HostileNpcService.new(
 	roles,
@@ -39,8 +56,9 @@ local evilRambo = HostileNpcService.new(
 	Config.NPC.EvilRambo,
 	function(player, npcType)
 		if gameplay then
-			gameplay:_onCatch(player, npcType)
+			return gameplay:_onCatch(player, npcType)
 		end
+		return false
 	end,
 	function(player, npcType)
 		if gameplay then
@@ -60,27 +78,37 @@ gameplay = GameplayService.new(
 )
 local admin = AdminService.new(remotes, validator, roles, story)
 
+checkpoints:Start()
+
 roles:ObserveRoleChanged(function(player, role, previousRole)
 	if role == Contract.Roles.Protagonist then
-		story:StartFor(player)
+		if RuntimeRules.canStartStory(role, roles:IsReady(player), story:GetState()) then
+			story:StartFor(player)
+		end
 	elseif previousRole == Contract.Roles.Protagonist then
 		story:ResetToLobby("ProtagonistLeft")
 	end
 end)
 
 remotes[Contract.ClientEvents.RoleReady].OnServerEvent:Connect(function(player)
-	if
-		not validator:AllowRate(
-			player,
-			Contract.ClientEvents.RoleReady,
-			Config.Validation.RemoteBurstLimit,
-			Config.Validation.RemoteWindowSeconds
-		)
-	then
+	if not validator:AllowAction(player, Contract.ClientEvents.RoleReady) then
 		return
 	end
-	roles:MarkReady(player)
-	story:SendSnapshot(player)
+	local markedReady = roles:MarkReady(player)
+	local startedStory = false
+	if
+		markedReady
+		and RuntimeRules.canStartStory(
+			roles:GetRole(player),
+			roles:IsReady(player),
+			story:GetState()
+		)
+	then
+		startedStory = story:StartFor(player)
+	end
+	if not startedStory then
+		story:SendSnapshot(player)
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(player)

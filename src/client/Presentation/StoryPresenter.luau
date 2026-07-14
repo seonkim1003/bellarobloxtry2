@@ -32,6 +32,7 @@ export type StoryPresenter = typeof(setmetatable(
 	{} :: {
 		_deps: DirectorDeps,
 		_state: string?,
+		_cueGeneration: number,
 	},
 	StoryPresenter
 ))
@@ -40,21 +41,37 @@ function StoryPresenter.new(deps: DirectorDeps): StoryPresenter
 	return setmetatable({
 		_deps = deps,
 		_state = nil,
+		_cueGeneration = 0,
 	}, StoryPresenter)
 end
 
 function StoryPresenter:_finishCue(payload: any)
 	local state = if typeof(payload) == "table" then payload.state else payload
+	local revision = if typeof(payload) == "table" then payload.revision else nil
 	if typeof(state) == "string" and ContentConfig.cinematicAckStates[state] then
-		self._deps.remotes:request("CinematicFinished", state)
+		self._deps.remotes:request("CinematicFinished", {
+			cue = state,
+			revision = if typeof(revision) == "number" then revision else 0,
+		})
 	end
 end
 
-function StoryPresenter:handleStoryCue(payload: any)
+function StoryPresenter:_schedule(_payload: any, delaySeconds: number, callback: () -> ())
+	local generation = self._cueGeneration
+	task.delay(delaySeconds, function()
+		if self._cueGeneration ~= generation then
+			return
+		end
+		callback()
+	end)
+end
+
+function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 	local state = if typeof(payload) == "table" then payload.state else payload
 	if typeof(state) ~= "string" then
 		return
 	end
+	self._cueGeneration = (self._cueGeneration :: number) + 1
 	self._state = state
 	local d = self._deps
 
@@ -62,6 +79,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.firstPerson.release()
 		d.sprint.disable()
 		d.asmr.stop()
+		d.fragmentPrompts.stop()
 		d.gui.showTitle(true)
 		d.gui.showCredits(false)
 		d.gui.showRevive(false)
@@ -80,7 +98,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.audio.ambienceForScene("Maze")
 		d.gui.setObjective("Follow Rambo through the maze")
 		d.gui.setSubtitle("Rambo", ContentConfig.dialogue.mazeIntro[1].text)
-		task.delay(ContentConfig.dialogue.mazeIntro[1].durationSeconds, function()
+		self:_schedule(payload, ContentConfig.dialogue.mazeIntro[1].durationSeconds, function()
 			d.gui.clearSubtitle()
 		end)
 		self:_finishCue(payload)
@@ -93,7 +111,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.detection.showChase(true)
 		d.gui.setObjective("Don't let Bella catch you")
 		d.gui.setSubtitle("System", ContentConfig.dialogue.bellaChase[1].text)
-		task.delay(ContentConfig.dialogue.bellaChase[1].durationSeconds, function()
+		self:_schedule(payload, ContentConfig.dialogue.bellaChase[1].durationSeconds, function()
 			d.gui.clearSubtitle()
 		end)
 		self:_finishCue(payload)
@@ -119,7 +137,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.sprint.enable()
 		d.gui.setObjective("Climb the tower - every step sings")
 		d.gui.setSubtitle("Robber Patterinson", ContentConfig.dialogue.robberGuide[2].text)
-		task.delay(4, function()
+		self:_schedule(payload, 4, function()
 			d.gui.clearSubtitle()
 		end)
 		self:_finishCue(payload)
@@ -142,7 +160,7 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.sprint.enable()
 		d.gui.setObjective("Find three letter fragments - stay quiet")
 		d.gui.setSubtitle("System", ContentConfig.dialogue.fieldHunt[1].text)
-		task.delay(ContentConfig.dialogue.fieldHunt[1].durationSeconds, function()
+		self:_schedule(payload, ContentConfig.dialogue.fieldHunt[1].durationSeconds, function()
 			d.gui.clearSubtitle()
 		end)
 		self:_finishCue(payload)
@@ -165,16 +183,16 @@ function StoryPresenter:handleStoryCue(payload: any)
 		d.gui.setSubtitle("Bella", ContentConfig.dialogue.epilogue[1].text)
 		d.cinematics:playSequence("epilogue", function()
 			d.gui.setSubtitle("Robber Patterinson", ContentConfig.dialogue.epilogue[2].text)
-			task.delay(4, function()
+			self:_schedule(payload, 4, function()
 				d.gui.clearSubtitle()
 				self:_finishCue(payload)
 			end)
 		end)
 	elseif state == "LetterReveal" then
+		-- LetterPanel owns the twist body copy; avoid repeating it as a subtitle.
 		d.letterPanel.show(true)
 		d.gui.setSubtitle("Gigi", ContentConfig.dialogue.letterReveal[1].text)
 		d.cinematics:playSequence("letterReveal", function()
-			d.gui.setSubtitle("", ContentConfig.finalLetterText.twist)
 			self:_finishCue(payload)
 		end)
 	elseif state == "Credits" then
@@ -193,6 +211,7 @@ function StoryPresenter:handleFragment(payload: any)
 	if typeof(payload) ~= "table" then
 		return
 	end
+	local generation = self._cueGeneration
 	local collected = payload.count
 	local total = payload.total or 3
 	if typeof(collected) == "number" then
@@ -203,6 +222,9 @@ function StoryPresenter:handleFragment(payload: any)
 		self._deps.detection.flashDetected()
 		self._deps.gui.setSubtitle("System", ContentConfig.dialogue.fieldHunt[2].text)
 		task.delay(1.5, function()
+			if self._cueGeneration ~= generation then
+				return
+			end
 			self._deps.gui.clearSubtitle()
 		end)
 	end
@@ -210,13 +232,17 @@ function StoryPresenter:handleFragment(payload: any)
 		self._deps.detection.showChase(true)
 		self._deps.gui.setSubtitle("System", ContentConfig.dialogue.fieldHunt[3].text)
 		task.delay(1.2, function()
+			if self._cueGeneration ~= generation then
+				return
+			end
 			self._deps.detection.reset()
 			self._deps.gui.clearSubtitle()
 		end)
 	end
 end
 
-function StoryPresenter:resetForReplay()
+function StoryPresenter.resetForReplay(self: StoryPresenter)
+	self._cueGeneration = (self._cueGeneration :: number) + 1
 	local d = self._deps
 	d.cinematics:reset()
 	d.asmr.stop()

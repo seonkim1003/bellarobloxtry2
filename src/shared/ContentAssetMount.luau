@@ -73,6 +73,30 @@ local function pivotTo(model: Model, target: CFrame)
 	end
 end
 
+local function prepareSceneModel(model: Model, target: Vector3, extentLimit: number?)
+	-- Free models frequently contain loose, unanchored assemblies. They collapse
+	-- into a pile as soon as physics starts unless scene geometry is made static.
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+		end
+	end
+
+	local _, initialSize = model:GetBoundingBox()
+	local horizontalExtent = math.max(initialSize.X, initialSize.Z)
+	local maxExtent = extentLimit or ContentConfig.worldLayout.MaxMarketplaceExtent
+	if horizontalExtent > maxExtent and horizontalExtent > 0 then
+		model:ScaleTo(model:GetScale() * maxExtent / horizontalExtent)
+	end
+
+	-- Align the bounding-box center to the stage origin and put its lowest point
+	-- on the shared ground plane. Asset pivots are often arbitrary or far away.
+	local bounds, size = model:GetBoundingBox()
+	local bottomCenter =
+		Vector3.new(bounds.Position.X, bounds.Position.Y - size.Y / 2, bounds.Position.Z)
+	model:PivotTo(model:GetPivot() + (target - bottomCenter))
+end
+
 function ContentAssetMount.loadAssetModel(assetId: number, label: string): Model?
 	local ok, containerOrErr = pcall(function()
 		return InsertService:LoadAsset(assetId)
@@ -154,7 +178,7 @@ local function placeSceneAsset(sceneId: string, assetId: number)
 
 	loaded.Name = "MarketplaceMap"
 	local pos = layout.position
-	pivotTo(loaded, CFrame.new(pos.x, pos.y, pos.z))
+	prepareSceneModel(loaded, Vector3.new(pos.x, pos.y, pos.z), layout.maxMarketplaceExtent)
 	loaded.Parent = folder
 
 	for _, descendant in folder:GetDescendants() do

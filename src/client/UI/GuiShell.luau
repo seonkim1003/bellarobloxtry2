@@ -1,14 +1,21 @@
 --!strict
 --[[
-	Phase 1 UI shells: title, objectives, subtitles, fragments, revive,
-	admin diagnostics, credits, Replay, and Leave.
+	Phase 1–2 UI shells: title, objectives, subtitles, fragments, revive,
+	admin diagnostics, credits, Replay/Leave (with confirm), reduced motion,
+	tower progress, threat state, and controller focus.
 ]]
 
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChild("SharedAccess"))
 local ContentConfig = SharedAccess.requireContentConfig()
+local SessionPreferences =
+	require(script.Parent.Parent:WaitForChild("Controls"):WaitForChild("SessionPreferences"))
+local ActionBindings =
+	require(script.Parent.Parent:WaitForChild("Controls"):WaitForChild("ActionBindings"))
 
 export type GuiShellApi = {
 	setObjective: (text: string) -> (),
@@ -16,17 +23,29 @@ export type GuiShellApi = {
 	clearSubtitle: () -> (),
 	setFragmentCount: (collected: number, total: number) -> (),
 	setRoleLabel: (roleText: string) -> (),
+	setReadyAccepted: (accepted: boolean) -> (),
+	setTowerProgress: (step: number, totalSteps: number) -> (),
+	setThreatState: (state: string) -> (),
+	clearThreatState: () -> (),
 	showTitle: (visible: boolean) -> (),
 	showRevive: (visible: boolean) -> (),
 	showCredits: (visible: boolean) -> (),
+	showLeaveConfirm: (visible: boolean) -> (),
 	showAdminDiagnostics: (visible: boolean, text: string?) -> (),
+	setCursorEnabled: (enabled: boolean) -> (),
+	setReducedMotionEnabled: (enabled: boolean) -> (),
 	setReadyHandler: (handler: (() -> ())?) -> (),
+	setCursorHandler: (handler: (() -> ())?) -> (),
+	setReducedMotionHandler: (handler: (() -> ())?) -> (),
 	setReviveHandler: (handler: ((accepted: boolean) -> ())?) -> (),
 	setReplayHandler: (handler: (() -> ())?) -> (),
 	setLeaveHandler: (handler: (() -> ())?) -> (),
+	setLeaveConfirmHandler: (handler: ((confirmed: boolean) -> ())?) -> (),
 }
 
 local GuiShell = {}
+
+local TOUCH_MIN = ContentConfig.ui.touchMinButtonPx or 72
 
 local function createTextLabel(parent: Instance, name: string, props: { [string]: any }): TextLabel
 	local label = Instance.new("TextLabel")
@@ -61,13 +80,44 @@ local function createButton(
 	button.Position = position
 	button.Size = size
 	button.AutoButtonColor = true
+	button.Selectable = true
 	button.Parent = parent
 
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = button
 
+	local constraint = Instance.new("UISizeConstraint")
+	constraint.MinSize = Vector2.new(TOUCH_MIN, math.floor(TOUCH_MIN * 0.55))
+	constraint.Parent = button
+
 	return button
+end
+
+local function softTween(instance: Instance, info: TweenInfo, goals: { [string]: any })
+	if SessionPreferences.shouldSkipMotionEffects() then
+		for key, value in goals do
+			(instance :: any)[key] = value
+		end
+		return nil
+	end
+	local tween = TweenService:Create(instance, info, goals)
+	tween:Play()
+	return tween
+end
+
+local function roleDisplay(roleText: string): (string, string)
+	local lower = string.lower(roleText)
+	if string.find(lower, "protagonist", 1, true) then
+		return "Protagonist", ContentConfig.ui.lobbyProtagonistHint
+	elseif string.find(lower, "observer", 1, true) then
+		return "Observer", ContentConfig.ui.lobbyObserverHint
+	elseif string.find(lower, "wait", 1, true) then
+		return "Waiting", ContentConfig.ui.lobbyWaitingHint
+	elseif roleText == "" or roleText == "Unassigned" then
+		return "Unassigned", ContentConfig.ui.lobbyWaitingHint
+	end
+	return roleText, ContentConfig.ui.lobbyCapacityHint
 end
 
 function GuiShell.mount(): GuiShellApi
@@ -105,33 +155,79 @@ function GuiShell.mount(): GuiShellApi
 
 	createTextLabel(titleFrame, "Brand", {
 		Text = ContentConfig.projectTitle,
-		Position = UDim2.fromScale(0.1, 0.28),
-		Size = UDim2.fromScale(0.8, 0.16),
+		Position = UDim2.fromScale(0.1, 0.18),
+		Size = UDim2.fromScale(0.8, 0.12),
 		Font = Enum.Font.GothamBold,
 	})
 	createTextLabel(titleFrame, "Prompt", {
 		Text = ContentConfig.ui.titlePrompt,
-		Position = UDim2.fromScale(0.15, 0.48),
-		Size = UDim2.fromScale(0.7, 0.08),
+		Position = UDim2.fromScale(0.12, 0.34),
+		Size = UDim2.fromScale(0.76, 0.07),
 	})
 	local roleLabel = createTextLabel(titleFrame, "Role", {
 		Text = "Role: Unassigned",
-		Position = UDim2.fromScale(0.2, 0.58),
-		Size = UDim2.fromScale(0.6, 0.06),
+		Position = UDim2.fromScale(0.15, 0.44),
+		Size = UDim2.fromScale(0.7, 0.06),
+	})
+	local lobbyHint = createTextLabel(titleFrame, "LobbyHint", {
+		Text = ContentConfig.ui.lobbyCapacityHint,
+		Position = UDim2.fromScale(0.12, 0.52),
+		Size = UDim2.fromScale(0.76, 0.08),
+		TextColor3 = Color3.fromRGB(190, 195, 210),
+	})
+	local readyStatus = createTextLabel(titleFrame, "ReadyStatus", {
+		Text = ContentConfig.ui.readyIdle,
+		Position = UDim2.fromScale(0.2, 0.62),
+		Size = UDim2.fromScale(0.6, 0.05),
+		TextColor3 = Color3.fromRGB(200, 200, 120),
 	})
 	local readyButton = createButton(
 		titleFrame,
 		"Ready",
-		"Ready",
-		UDim2.fromScale(0.35, 0.7),
-		UDim2.fromScale(0.3, 0.08)
+		`{ContentConfig.ui.readyLabel}  [Enter / A]`,
+		UDim2.fromScale(0.3, 0.7),
+		UDim2.fromScale(0.4, 0.09)
 	)
+
+	local reducedMotionButton = createButton(
+		titleFrame,
+		"ReducedMotion",
+		ContentConfig.ui.reducedMotionOff,
+		UDim2.fromScale(0.25, 0.84),
+		UDim2.fromScale(0.5, 0.07)
+	)
+	reducedMotionButton.TextScaled = false
+	reducedMotionButton.TextSize = 16
+
+	-- In-game mouse unlock. Keyboard/mouse players can use Tab, controller players
+	-- can use Y, and touch/controller users can activate this selectable button.
+	local cursorButton = createButton(
+		screenGui,
+		"CursorToggle",
+		"Unlock Cursor  [Tab / Y]",
+		UDim2.fromScale(0.72, 0.91),
+		UDim2.fromScale(0.26, 0.055)
+	)
+	cursorButton.TextScaled = false
+	cursorButton.TextSize = 16
+	cursorButton.Visible = false
+
+	local settingsButton = createButton(
+		screenGui,
+		"SettingsMotion",
+		"Motion: Full  [M]",
+		UDim2.fromScale(0.02, 0.91),
+		UDim2.fromScale(0.28, 0.055)
+	)
+	settingsButton.TextScaled = false
+	settingsButton.TextSize = 15
+	settingsButton.Visible = false
 
 	-- Objective
 	local objectiveLabel = createTextLabel(screenGui, "Objective", {
 		Text = ContentConfig.ui.objectiveFallback,
 		Position = UDim2.fromScale(0.05, 0.04),
-		Size = UDim2.fromScale(0.6, 0.06),
+		Size = UDim2.fromScale(0.58, 0.06),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Visible = false,
 	})
@@ -139,10 +235,30 @@ function GuiShell.mount(): GuiShellApi
 	-- Fragment count
 	local fragmentLabel = createTextLabel(screenGui, "Fragments", {
 		Text = `{ContentConfig.ui.fragmentLabel}: 0 / 3`,
-		Position = UDim2.fromScale(0.7, 0.04),
-		Size = UDim2.fromScale(0.25, 0.06),
+		Position = UDim2.fromScale(0.64, 0.04),
+		Size = UDim2.fromScale(0.31, 0.06),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Visible = false,
+	})
+
+	-- Tower progress (step / flight)
+	local towerProgressLabel = createTextLabel(screenGui, "TowerProgress", {
+		Text = "",
+		Position = UDim2.fromScale(0.25, 0.12),
+		Size = UDim2.fromScale(0.5, 0.05),
+		Visible = false,
+		BackgroundTransparency = 0.45,
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+	})
+
+	-- Threat state (text + icon glyph; not color-only)
+	local threatLabel = createTextLabel(screenGui, "ThreatState", {
+		Text = "",
+		Position = UDim2.fromScale(0.3, 0.18),
+		Size = UDim2.fromScale(0.4, 0.05),
+		Visible = false,
+		BackgroundTransparency = 0.4,
+		BackgroundColor3 = Color3.fromRGB(20, 10, 10),
 	})
 
 	-- Subtitles
@@ -170,22 +286,22 @@ function GuiShell.mount(): GuiShellApi
 
 	createTextLabel(reviveFrame, "Prompt", {
 		Text = ContentConfig.dialogue.revive[1].text,
-		Position = UDim2.fromScale(0.1, 0.15),
-		Size = UDim2.fromScale(0.8, 0.3),
+		Position = UDim2.fromScale(0.1, 0.12),
+		Size = UDim2.fromScale(0.8, 0.28),
 	})
 	local acceptButton = createButton(
 		reviveFrame,
 		"Accept",
-		ContentConfig.ui.reviveAccept,
-		UDim2.fromScale(0.1, 0.55),
-		UDim2.fromScale(0.35, 0.28)
+		`{ContentConfig.ui.reviveAccept}  [Enter / A]`,
+		UDim2.fromScale(0.08, 0.5),
+		UDim2.fromScale(0.38, 0.32)
 	)
 	local refuseButton = createButton(
 		reviveFrame,
 		"Refuse",
-		ContentConfig.ui.reviveRefuse,
-		UDim2.fromScale(0.55, 0.55),
-		UDim2.fromScale(0.35, 0.28)
+		`{ContentConfig.ui.reviveRefuse}  [Bksp / B]`,
+		UDim2.fromScale(0.54, 0.5),
+		UDim2.fromScale(0.38, 0.32)
 	)
 
 	-- Admin diagnostics (read-only shell)
@@ -213,57 +329,239 @@ function GuiShell.mount(): GuiShellApi
 	creditsFrame.Visible = false
 	creditsFrame.Parent = screenGui
 
-	local creditsBody = createTextLabel(creditsFrame, "Body", {
+	createTextLabel(creditsFrame, "Body", {
 		Text = table.concat(ContentConfig.ui.creditsLines, "\n"),
-		Position = UDim2.fromScale(0.15, 0.2),
-		Size = UDim2.fromScale(0.7, 0.4),
+		Position = UDim2.fromScale(0.12, 0.16),
+		Size = UDim2.fromScale(0.76, 0.38),
 	})
-	local _ = creditsBody
 
 	local replayButton = createButton(
 		creditsFrame,
 		"Replay",
-		ContentConfig.ui.replayLabel,
-		UDim2.fromScale(0.25, 0.7),
-		UDim2.fromScale(0.2, 0.08)
+		`{ContentConfig.ui.replayLabel}  [R / X]`,
+		UDim2.fromScale(0.2, 0.62),
+		UDim2.fromScale(0.26, 0.1)
 	)
 	local leaveButton = createButton(
 		creditsFrame,
 		"Leave",
-		ContentConfig.ui.leaveLabel,
-		UDim2.fromScale(0.55, 0.7),
-		UDim2.fromScale(0.2, 0.08)
+		`{ContentConfig.ui.leaveLabel}  [L / B]`,
+		UDim2.fromScale(0.54, 0.62),
+		UDim2.fromScale(0.26, 0.1)
 	)
 
+	-- Leave confirmation overlay
+	local leaveConfirmFrame = Instance.new("Frame")
+	leaveConfirmFrame.Name = "LeaveConfirm"
+	leaveConfirmFrame.BackgroundColor3 = Color3.fromRGB(14, 12, 20)
+	leaveConfirmFrame.BackgroundTransparency = 0.1
+	leaveConfirmFrame.Size = UDim2.fromScale(0.52, 0.3)
+	leaveConfirmFrame.Position = UDim2.fromScale(0.24, 0.35)
+	leaveConfirmFrame.Visible = false
+	leaveConfirmFrame.ZIndex = 5
+	leaveConfirmFrame.Parent = screenGui
+	local leaveConfirmCorner = Instance.new("UICorner")
+	leaveConfirmCorner.CornerRadius = UDim.new(0, 12)
+	leaveConfirmCorner.Parent = leaveConfirmFrame
+
+	createTextLabel(leaveConfirmFrame, "Prompt", {
+		Text = ContentConfig.ui.leaveConfirmPrompt,
+		Position = UDim2.fromScale(0.08, 0.12),
+		Size = UDim2.fromScale(0.84, 0.32),
+		ZIndex = 6,
+	})
+	local leaveYesButton = createButton(
+		leaveConfirmFrame,
+		"LeaveYes",
+		`{ContentConfig.ui.leaveConfirmYes}  [Enter / A]`,
+		UDim2.fromScale(0.08, 0.52),
+		UDim2.fromScale(0.38, 0.32)
+	)
+	leaveYesButton.ZIndex = 6
+	local leaveNoButton = createButton(
+		leaveConfirmFrame,
+		"LeaveNo",
+		`{ContentConfig.ui.leaveConfirmNo}  [Esc / B]`,
+		UDim2.fromScale(0.54, 0.52),
+		UDim2.fromScale(0.38, 0.32)
+	)
+	leaveNoButton.ZIndex = 6
+
+	-- Selection graph (controller)
+	readyButton.NextSelectionDown = reducedMotionButton
+	reducedMotionButton.NextSelectionUp = readyButton
+	acceptButton.NextSelectionRight = refuseButton
+	refuseButton.NextSelectionLeft = acceptButton
+	replayButton.NextSelectionRight = leaveButton
+	leaveButton.NextSelectionLeft = replayButton
+	leaveYesButton.NextSelectionRight = leaveNoButton
+	leaveNoButton.NextSelectionLeft = leaveYesButton
+	cursorButton.NextSelectionLeft = settingsButton
+	settingsButton.NextSelectionRight = cursorButton
+
 	local readyHandler: (() -> ())? = nil
+	local cursorHandler: (() -> ())? = nil
+	local reducedMotionHandler: (() -> ())? = nil
 	local reviveHandler: ((boolean) -> ())? = nil
 	local replayHandler: (() -> ())? = nil
 	local leaveHandler: (() -> ())? = nil
+	local leaveConfirmHandler: ((boolean) -> ())? = nil
 
-	readyButton.MouseButton1Click:Connect(function()
+	local titleVisible = true
+	local reviveVisible = false
+	local creditsVisible = false
+	local leaveConfirmVisible = false
+
+	local function updateMotionButtonLabels()
+		local reduced = SessionPreferences.isReducedMotion()
+		local text = if reduced
+			then ContentConfig.ui.reducedMotionOn
+			else ContentConfig.ui.reducedMotionOff
+		reducedMotionButton.Text = text
+		settingsButton.Text = if reduced then "Motion: Reduced  [M]" else "Motion: Full  [M]"
+	end
+
+	local function syncBindings()
+		ActionBindings.setPanelVisibility({
+			title = titleVisible,
+			revive = reviveVisible,
+			credits = creditsVisible and not leaveConfirmVisible,
+			leaveConfirm = leaveConfirmVisible,
+		})
+	end
+
+	local function showLeaveConfirm(visible: boolean)
+		leaveConfirmVisible = visible
+		leaveConfirmFrame.Visible = visible
+		if visible then
+			ActionBindings.focus(leaveNoButton)
+		elseif creditsVisible then
+			ActionBindings.focus(replayButton)
+		else
+			ActionBindings.clearFocus()
+		end
+		syncBindings()
+	end
+
+	local function toggleReducedMotion()
+		if reducedMotionHandler then
+			reducedMotionHandler()
+		else
+			SessionPreferences.toggleReducedMotion()
+			updateMotionButtonLabels()
+		end
+	end
+
+	local function invokeReady()
 		if readyHandler then
 			readyHandler()
 		end
+		readyStatus.Text = ContentConfig.ui.readyAccepted
+		readyStatus.TextColor3 = Color3.fromRGB(140, 220, 150)
+		readyButton.BackgroundColor3 = Color3.fromRGB(40, 90, 55)
+	end
+
+	readyButton.Activated:Connect(function()
+		invokeReady()
 	end)
-	acceptButton.MouseButton1Click:Connect(function()
+	cursorButton.Activated:Connect(function()
+		if cursorHandler then
+			cursorHandler()
+		end
+	end)
+	acceptButton.Activated:Connect(function()
 		if reviveHandler then
 			reviveHandler(true)
 		end
 	end)
-	refuseButton.MouseButton1Click:Connect(function()
+	refuseButton.Activated:Connect(function()
 		if reviveHandler then
 			reviveHandler(false)
 		end
 	end)
-	replayButton.MouseButton1Click:Connect(function()
+	replayButton.Activated:Connect(function()
 		if replayHandler then
 			replayHandler()
 		end
 	end)
-	leaveButton.MouseButton1Click:Connect(function()
-		if leaveHandler then
+	leaveButton.Activated:Connect(function()
+		showLeaveConfirm(true)
+	end)
+	leaveYesButton.Activated:Connect(function()
+		showLeaveConfirm(false)
+		if leaveConfirmHandler then
+			leaveConfirmHandler(true)
+		elseif leaveHandler then
 			leaveHandler()
 		end
+	end)
+	leaveNoButton.Activated:Connect(function()
+		showLeaveConfirm(false)
+		if leaveConfirmHandler then
+			leaveConfirmHandler(false)
+		end
+	end)
+	reducedMotionButton.Activated:Connect(function()
+		toggleReducedMotion()
+	end)
+	settingsButton.Activated:Connect(function()
+		toggleReducedMotion()
+	end)
+
+	ActionBindings.setHandlers({
+		ready = function()
+			if titleVisible then
+				invokeReady()
+			end
+		end,
+		reviveAccept = function()
+			if reviveVisible and reviveHandler then
+				reviveHandler(true)
+			end
+		end,
+		reviveRefuse = function()
+			if reviveVisible and reviveHandler then
+				reviveHandler(false)
+			end
+		end,
+		replay = function()
+			if creditsVisible and not leaveConfirmVisible and replayHandler then
+				replayHandler()
+			end
+		end,
+		leave = function()
+			if creditsVisible and not leaveConfirmVisible then
+				showLeaveConfirm(true)
+			end
+		end,
+		leaveConfirm = function()
+			if leaveConfirmVisible then
+				showLeaveConfirm(false)
+				if leaveHandler then
+					leaveHandler()
+				end
+			end
+		end,
+		leaveCancel = function()
+			if leaveConfirmVisible then
+				showLeaveConfirm(false)
+			end
+		end,
+		reducedMotionToggle = toggleReducedMotion,
+	})
+	ActionBindings.start()
+	updateMotionButtonLabels()
+	syncBindings()
+	ActionBindings.focus(readyButton)
+
+	SessionPreferences.onChanged(function()
+		updateMotionButtonLabels()
+	end)
+
+	-- Keep touch padding honest if device capabilities change after startup.
+	UserInputService.LastInputTypeChanged:Connect(function()
+		local guiInset = GuiService:GetGuiInset()
+		pad.PaddingTop = UDim.new(inset, guiInset.Y > 0 and 0 or 8)
 	end)
 
 	local api: GuiShellApi = {
@@ -285,21 +583,99 @@ function GuiShell.mount(): GuiShellApi
 		end,
 		setFragmentCount = function(collected: number, total: number)
 			fragmentLabel.Visible = true
-			fragmentLabel.Text = `{ContentConfig.ui.fragmentLabel}: {collected} / {total}`
+			local remaining = math.max(total - collected, 0)
+			fragmentLabel.Text =
+				`{ContentConfig.ui.fragmentLabel}: {collected} / {total}  ({remaining} left)`
 		end,
 		setRoleLabel = function(roleText: string)
-			roleLabel.Text = `Role: {roleText}`
+			local display, hint = roleDisplay(roleText)
+			roleLabel.Text = `Role: {display}`
+			lobbyHint.Text = `{hint}\n{ContentConfig.ui.lobbyCapacityHint}`
+		end,
+		setReadyAccepted = function(accepted: boolean)
+			if accepted then
+				readyStatus.Text = ContentConfig.ui.readyAccepted
+				readyStatus.TextColor3 = Color3.fromRGB(140, 220, 150)
+			else
+				readyStatus.Text = ContentConfig.ui.readyIdle
+				readyStatus.TextColor3 = Color3.fromRGB(200, 200, 120)
+				readyButton.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+			end
+		end,
+		setTowerProgress = function(step: number, totalSteps: number)
+			local flights = ContentConfig.towerFlights
+			local perFlight = math.max(1, math.ceil(totalSteps / flights))
+			local flight = math.clamp(math.ceil(step / perFlight), 1, flights)
+			towerProgressLabel.Visible = step > 0
+			towerProgressLabel.Text =
+				`{ContentConfig.ui.towerProgressLabel}: {step}/{totalSteps}  ·  Flight {flight}/{flights}`
+		end,
+		setThreatState = function(state: string)
+			threatLabel.Visible = true
+			if state == "detected" then
+				threatLabel.Text = ContentConfig.ui.threatDetected
+				threatLabel.TextColor3 = Color3.fromRGB(255, 200, 90)
+			elseif state == "chase" then
+				threatLabel.Text = ContentConfig.ui.threatChase
+				threatLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
+			elseif state == "safe" then
+				threatLabel.Text = ContentConfig.ui.threatSafe
+				threatLabel.TextColor3 = Color3.fromRGB(160, 220, 160)
+			else
+				threatLabel.Text = state
+			end
+		end,
+		clearThreatState = function()
+			threatLabel.Visible = false
+			threatLabel.Text = ""
 		end,
 		showTitle = function(visible: boolean)
+			titleVisible = visible
 			titleFrame.Visible = visible
+			cursorButton.Visible = not visible
+			settingsButton.Visible = not visible
 			objectiveLabel.Visible = not visible
 				and objectiveLabel.Text ~= ContentConfig.ui.objectiveFallback
+			if not visible then
+				towerProgressLabel.Visible = false
+			end
+			if visible then
+				ActionBindings.focus(readyButton)
+			else
+				ActionBindings.clearFocus()
+			end
+			syncBindings()
 		end,
 		showRevive = function(visible: boolean)
+			reviveVisible = visible
 			reviveFrame.Visible = visible
+			if visible then
+				softTween(
+					reviveFrame,
+					TweenInfo.new(SessionPreferences.tweenSeconds(0.25, 0), Enum.EasingStyle.Quad),
+					{ BackgroundTransparency = 0.2 }
+				)
+				ActionBindings.focus(acceptButton)
+			else
+				ActionBindings.clearFocus()
+			end
+			syncBindings()
 		end,
 		showCredits = function(visible: boolean)
+			creditsVisible = visible
 			creditsFrame.Visible = visible
+			if not visible then
+				showLeaveConfirm(false)
+			end
+			if visible then
+				ActionBindings.focus(replayButton)
+			else
+				ActionBindings.clearFocus()
+			end
+			syncBindings()
+		end,
+		showLeaveConfirm = function(visible: boolean)
+			showLeaveConfirm(visible)
 		end,
 		showAdminDiagnostics = function(visible: boolean, text: string?)
 			adminFrame.Visible = visible
@@ -307,10 +683,26 @@ function GuiShell.mount(): GuiShellApi
 				adminLabel.Text = text
 			end
 		end,
+		setCursorEnabled = function(enabled: boolean)
+			cursorButton.Text = if enabled
+				then "Lock Cursor  [Tab / Y]"
+				else "Unlock Cursor  [Tab / Y]"
+			cursorButton.Modal = enabled
+		end,
+		setReducedMotionEnabled = function(enabled: boolean)
+			SessionPreferences.setReducedMotion(enabled)
+			updateMotionButtonLabels()
+		end,
 		setReadyHandler = function(handler: (() -> ())?)
 			readyHandler = handler
 		end,
-		setReviveHandler = function(handler: ((boolean) -> ())?)
+		setCursorHandler = function(handler: (() -> ())?)
+			cursorHandler = handler
+		end,
+		setReducedMotionHandler = function(handler: (() -> ())?)
+			reducedMotionHandler = handler
+		end,
+		setReviveHandler = function(handler: ((accepted: boolean) -> ())?)
 			reviveHandler = handler
 		end,
 		setReplayHandler = function(handler: (() -> ())?)
@@ -318,6 +710,9 @@ function GuiShell.mount(): GuiShellApi
 		end,
 		setLeaveHandler = function(handler: (() -> ())?)
 			leaveHandler = handler
+		end,
+		setLeaveConfirmHandler = function(handler: ((confirmed: boolean) -> ())?)
+			leaveConfirmHandler = handler
 		end,
 	}
 

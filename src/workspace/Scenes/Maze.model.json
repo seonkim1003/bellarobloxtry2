@@ -4,7 +4,9 @@
     {
       "name": "MazeSpawn",
       "className": "Part",
-      "tags": ["SceneSpawn"],
+      "tags": [
+        "SceneSpawn"
+      ],
       "attributes": {
         "MarkerId": "MazeStart",
         "SceneId": "MazeCheckpoint"
@@ -12,14 +14,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          50, 1, 0
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.35, 0.24, 0.55],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1140,
+          1,
+          -35
+        ],
+        "Color": [
+          0.35,
+          0.24,
+          0.55
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -27,7 +45,9 @@
     {
       "name": "BellaSpawn",
       "className": "Part",
-      "tags": ["NPCSpawn"],
+      "tags": [
+        "NPCSpawn"
+      ],
       "attributes": {
         "MarkerId": "BellaSpawn",
         "NPCType": "Bella",
@@ -36,14 +56,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          58, 1, 8
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.55, 0.2, 0.2],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1140,
+          1,
+          -5
+        ],
+        "Color": [
+          0.55,
+          0.2,
+          0.2
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -51,7 +87,9 @@
     {
       "name": "RamboGuideSpawn",
       "className": "Part",
-      "tags": ["NPCSpawn"],
+      "tags": [
+        "NPCSpawn"
+      ],
       "attributes": {
         "MarkerId": "RamboGuideSpawn",
         "NPCType": "FriendlyRambo",
@@ -60,14 +98,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          54, 1, 4
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.4, 0.3, 0.2],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1145,
+          1,
+          -30
+        ],
+        "Color": [
+          0.4,
+          0.3,
+          0.2
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -75,7 +129,9 @@
     {
       "name": "RamboGuideTarget1",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "RamboGuideTarget",
         "SceneId": "Maze",
@@ -84,15 +140,34 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2, 2, 2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 62,1,4],
+        "Size": [
+          2,
+          2,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1155,
+          1,
+          30
+        ],
         "Transparency": 1
       }
     },
     {
       "name": "RamboGuideTarget2",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "RamboGuideTarget",
         "SceneId": "Maze",
@@ -101,15 +176,34 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2, 2, 2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 74,1,10],
+        "Size": [
+          2,
+          2,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1185,
+          1,
+          -30
+        ],
         "Transparency": 1
       }
     },
     {
       "name": "RamboGuideTarget3",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "RamboGuideTarget",
         "SceneId": "Maze",
@@ -118,15 +212,34 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2, 2, 2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 86,1,18],
+        "Size": [
+          2,
+          2,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1245,
+          1,
+          30
+        ],
         "Transparency": 1
       }
     },
     {
       "name": "MazeExit",
       "className": "Part",
-      "tags": ["MazeExit"],
+      "tags": [
+        "MazeExit"
+      ],
       "attributes": {
         "MarkerId": "MazeExit",
         "SceneId": "Maze"
@@ -134,14 +247,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          90, 1, 20
+        "Size": [
+          4,
+          6,
+          4
         ],
-        "Color": [0.9, 0.5, 0.2],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1260,
+          3,
+          35
+        ],
+        "Color": [
+          0.9,
+          0.5,
+          0.2
+        ],
         "Material": "Neon",
         "Transparency": 0.35
       }
@@ -149,7 +278,9 @@
     {
       "name": "AmbushMarker",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "KidnapStart",
         "SceneId": "Maze",
@@ -158,22 +289,34 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2.0, 2.0, 2.0],
-        "CFrame": [
-          1.0, 0.0, 0.0,
-          0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0,
-          88, 2, 20
+        "Size": [
+          2,
+          2,
+          2
         ],
-        "Color": [0.8, 0.3, 0.5],
-        "Material": "Neon",
-        "Transparency": 0.35
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1256,
+          2,
+          32
+        ],
+        "Transparency": 1
       }
     },
     {
       "name": "KidnapHoldMarker",
       "className": "Part",
-      "tags": ["CinematicMarker"],
+      "tags": [
+        "CinematicMarker"
+      ],
       "attributes": {
         "MarkerId": "KidnapHold",
         "SceneId": "Maze",
@@ -182,8 +325,25 @@
       "properties": {
         "Anchored": true,
         "CanCollide": false,
-        "Size": [2,2,2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 90,2,18],
+        "Size": [
+          2,
+          2,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1260,
+          2,
+          30
+        ],
         "Transparency": 1
       }
     },
@@ -193,9 +353,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [60,10,2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 70,5,-20],
-        "Color": [0.12,0.1,0.16],
+        "Size": [
+          140,
+          10,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1200,
+          5,
+          -50
+        ],
+        "Color": [
+          0.12,
+          0.1,
+          0.16
+        ],
         "Material": "Slate"
       }
     },
@@ -205,9 +386,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [60,10,2],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 70,5,40],
-        "Color": [0.12,0.1,0.16],
+        "Size": [
+          140,
+          10,
+          2
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1200,
+          5,
+          50
+        ],
+        "Color": [
+          0.12,
+          0.1,
+          0.16
+        ],
         "Material": "Slate"
       }
     },
@@ -217,9 +419,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [2,10,60],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 40,5,10],
-        "Color": [0.12,0.1,0.16],
+        "Size": [
+          2,
+          10,
+          100
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1130,
+          5,
+          0
+        ],
+        "Color": [
+          0.12,
+          0.1,
+          0.16
+        ],
         "Material": "Slate"
       }
     },
@@ -229,9 +452,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [2,10,60],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 100,5,10],
-        "Color": [0.12,0.1,0.16],
+        "Size": [
+          2,
+          10,
+          100
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1270,
+          5,
+          0
+        ],
+        "Color": [
+          0.12,
+          0.1,
+          0.16
+        ],
         "Material": "Slate"
       }
     },
@@ -241,9 +485,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [2,10,30],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 62,5,5],
-        "Color": [0.16,0.12,0.2],
+        "Size": [
+          2,
+          10,
+          70
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1165,
+          5,
+          -15
+        ],
+        "Color": [
+          0.16,
+          0.12,
+          0.22
+        ],
         "Material": "Slate"
       }
     },
@@ -253,9 +518,30 @@
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [2,10,30],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 74,5,20],
-        "Color": [0.16,0.12,0.2],
+        "Size": [
+          2,
+          10,
+          70
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1200,
+          5,
+          15
+        ],
+        "Color": [
+          0.16,
+          0.12,
+          0.22
+        ],
         "Material": "Slate"
       }
     },
@@ -265,23 +551,68 @@
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [2,10,26],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 84,5,2],
-        "Color": [0.16,0.12,0.2],
+        "Size": [
+          2,
+          10,
+          70
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1235,
+          5,
+          -15
+        ],
+        "Color": [
+          0.16,
+          0.12,
+          0.22
+        ],
         "Material": "Slate"
       }
     },
     {
       "name": "MazeFloor",
       "className": "Part",
-      "attributes": { "SceneId": "Maze", "MarkerId": "MazeFloor" },
+      "attributes": {
+        "SceneId": "Maze",
+        "MarkerId": "MazeFloor"
+      },
       "properties": {
         "Anchored": true,
         "CanCollide": true,
-        "Size": [60.0, 1.0, 60.0],
-        "CFrame": [1,0,0, 0,1,0, 0,0,1, 70,0,10],
-        "Color": [0.18, 0.14, 0.22],
-        "Material": "Slate"
+        "Size": [
+          140,
+          1,
+          100
+        ],
+        "CFrame": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1200,
+          0,
+          0
+        ],
+        "Color": [
+          0.09,
+          0.08,
+          0.12
+        ],
+        "Material": "Concrete"
       }
     }
   ]
