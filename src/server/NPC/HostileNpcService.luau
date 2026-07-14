@@ -186,6 +186,7 @@ function HostileNpcService.SetActive(self: any, active: boolean)
 	self.active = active
 	if active then
 		self:_discover()
+		self.elapsed = Config.NPC.RepathSeconds
 	end
 	if not active and self.agent then
 		self.agent:Cancel()

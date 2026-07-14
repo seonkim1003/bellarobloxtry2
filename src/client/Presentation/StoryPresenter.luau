@@ -16,6 +16,7 @@ export type DirectorDeps = {
 	asmr: any,
 	robber: any,
 	silhouettes: any,
+	kidnapStage: any,
 	epilogueProps: any,
 	fragmentFeedback: any,
 	detection: any,
@@ -77,7 +78,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 
 	if state == "RoleLobby" then
 		d.firstPerson.release()
-		d.sprint.disable()
+		d.sprint.enable()
 		d.asmr.stop()
 		d.fragmentPrompts.stop()
 		d.gui.showTitle(true)
@@ -117,15 +118,18 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		self:_finishCue(payload)
 	elseif state == "RamboTaken" then
 		d.detection.reset()
+		d.sprint.disable()
+		d.firstPerson.release()
 		d.gui.setObjective("Rambo was taken...")
-		d.cinematics:playSequence("kidnap", function()
+		d.cinematics:playKidnapCutscene(d.kidnapStage, function()
+			d.kidnapStage:clear()
 			self:_finishCue(payload)
 		end)
 	elseif state == "GuideEncounter" then
 		d.lighting.applyScene("Tower")
 		d.audio.ambienceForScene("Tower")
 		d.robber.ensureAtSpawn()
-		d.gui.setObjective("Listen to Robber Patterinson")
+		d.gui.setObjective("Listen to Robert Pattinson")
 		d.cinematics:playSequence("guide", function()
 			self:_finishCue(payload)
 		end)
@@ -136,7 +140,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.asmr.start()
 		d.sprint.enable()
 		d.gui.setObjective("Climb the tower - every step sings")
-		d.gui.setSubtitle("Robber Patterinson", ContentConfig.dialogue.robberGuide[2].text)
+		d.gui.setSubtitle("Robert Pattinson", ContentConfig.dialogue.robberGuide[2].text)
 		self:_schedule(payload, 4, function()
 			d.gui.clearSubtitle()
 		end)
@@ -182,7 +186,7 @@ function StoryPresenter.handleStoryCue(self: StoryPresenter, payload: any)
 		d.gui.setObjective("One hour later")
 		d.gui.setSubtitle("Bella", ContentConfig.dialogue.epilogue[1].text)
 		d.cinematics:playSequence("epilogue", function()
-			d.gui.setSubtitle("Robber Patterinson", ContentConfig.dialogue.epilogue[2].text)
+			d.gui.setSubtitle("Robert Pattinson", ContentConfig.dialogue.epilogue[2].text)
 			self:_schedule(payload, 4, function()
 				d.gui.clearSubtitle()
 				self:_finishCue(payload)
@@ -246,10 +250,11 @@ function StoryPresenter.resetForReplay(self: StoryPresenter)
 	local d = self._deps
 	d.cinematics:reset()
 	d.asmr.stop()
-	d.sprint.disable()
+	d.sprint.enable()
 	d.detection.reset()
 	d.letterPanel.reset()
 	d.silhouettes.clear()
+	d.kidnapStage:clear()
 	d.epilogueProps.clear()
 	d.robber.clear()
 	d.fragmentPrompts.stop()

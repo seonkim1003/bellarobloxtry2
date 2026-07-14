@@ -50,6 +50,7 @@ local function findDialogue(subtitleId: string?): (string?, string?)
 		ContentConfig.dialogue.lobby,
 		ContentConfig.dialogue.mazeIntro,
 		ContentConfig.dialogue.bellaChase,
+		ContentConfig.dialogue.kidnap,
 		ContentConfig.dialogue.robberGuide,
 		ContentConfig.dialogue.revive,
 		ContentConfig.dialogue.corruption,
@@ -279,6 +280,88 @@ function CinematicPlayer.playSequence(
 		end
 		self:_restoreCamera()
 		self:_tweenFade(1, 0.2, generation)
+		if not self:_stillCurrent(generation) then
+			return
+		end
+		self._playing = false
+		if onComplete then
+			onComplete()
+		end
+	end)
+end
+
+function CinematicPlayer.playKidnapCutscene(
+	self: CinematicPlayer,
+	kidnapStage: any,
+	onComplete: (() -> ())?
+)
+	local steps = ContentConfig.cinematics.kidnap
+	if steps == nil then
+		warn("[Cinematic] Missing kidnap sequence")
+		if onComplete then
+			onComplete()
+		end
+		return
+	end
+
+	kidnapStage:prepare()
+
+	local generation = self:_beginPlayback()
+	task.spawn(function()
+		for stepIndex, step in steps do
+			if not self:_stillCurrent(generation) then
+				return
+			end
+
+			if stepIndex == 1 then
+				self:_tweenFade(1, 0.15, generation)
+			else
+				self:_tweenFade(1, math.min(step.fadeOutSeconds, 0.2), generation)
+			end
+			if not self:_stillCurrent(generation) then
+				return
+			end
+
+			local focus = kidnapStage:getFocusCFrame(step.markerId)
+			if focus then
+				self:_lockCamera(focus)
+			else
+				local marker = findMarker(step.markerId)
+				if marker then
+					local look = marker.CFrame * CFrame.new(0, 1.5, 4)
+					self:_lockCamera(
+						CFrame.lookAt(look.Position, marker.Position + Vector3.new(0, 1.5, 0))
+					)
+				end
+			end
+
+			kidnapStage:beginPhase(step.markerId, step.durationSeconds)
+
+			local speaker, text = findDialogue(step.subtitleId)
+			if text and self._subtitle then
+				self._subtitle(speaker, text)
+			end
+
+			local dwell = math.max(
+				step.durationSeconds
+					- (if stepIndex == 1 then 0.15 else math.min(step.fadeOutSeconds, 0.2)),
+				0.35
+			)
+			task.wait(dwell)
+			if not self:_stillCurrent(generation) then
+				return
+			end
+
+			if self._clearSubtitle then
+				self._clearSubtitle()
+			end
+		end
+
+		if not self:_stillCurrent(generation) then
+			return
+		end
+		self:_restoreCamera()
+		self:_tweenFade(1, 0.35, generation)
 		if not self:_stillCurrent(generation) then
 			return
 		end

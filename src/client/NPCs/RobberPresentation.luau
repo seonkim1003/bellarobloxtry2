@@ -61,10 +61,10 @@ function RobberPresentation.ensureAtSpawn(): Model?
 	local folder = Workspace:FindFirstChild("ContentNPCs")
 	if folder then
 		for _, child in folder:GetChildren() do
-			if child:IsA("Model") and child.Name:find("RobberPatterinson") then
+			if child:IsA("Model") and child.Name:find("RobertPattinson") then
 				local head = child:FindFirstChildWhichIsA("BasePart", true)
 				if head then
-					attachBillboard(head, "Robber Patterinson", "Tower guide")
+					attachBillboard(head, "Robert Pattinson", "Tower guide")
 				end
 				return child
 			end
@@ -73,10 +73,10 @@ function RobberPresentation.ensureAtSpawn(): Model?
 
 	-- Fallback: clone template locally if server mount missed this NPC.
 	local templates = ReplicatedStorage:FindFirstChild("ContentModels")
-	local template = if templates then templates:FindFirstChild("RobberPatterinson") else nil
+	local template = if templates then templates:FindFirstChild("RobertPattinson") else nil
 	local spawnPart: BasePart? = nil
 	for _, tagged in CollectionService:GetTagged("NPCSpawn") do
-		if tagged:IsA("BasePart") and tagged:GetAttribute("NPCType") == "RobberPatterinson" then
+		if tagged:IsA("BasePart") and tagged:GetAttribute("NPCType") == "RobertPattinson" then
 			spawnPart = tagged
 			break
 		end
@@ -93,14 +93,14 @@ function RobberPresentation.ensureAtSpawn(): Model?
 	end
 
 	local clone = template:Clone()
-	clone.Name = "RobberPatterinson_Client"
+	clone.Name = "RobertPattinson_Client"
 	if clone.PrimaryPart then
 		clone:PivotTo(spawnPart.CFrame)
 	end
 	clone.Parent = npcs
 	local adornee = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart", true)
 	if adornee then
-		attachBillboard(adornee, "Robber Patterinson", "Tower guide")
+		attachBillboard(adornee, "Robert Pattinson", "Tower guide")
 	end
 	return clone
 end
@@ -112,7 +112,7 @@ function RobberPresentation.clear()
 	end
 	for _, child in folder:GetChildren() do
 		-- Only destroy local fallbacks — never the server-mounted marketplace NPC.
-		if child.Name == "RobberPatterinson_Client" then
+		if child.Name == "RobertPattinson_Client" then
 			child:Destroy()
 		end
 	end

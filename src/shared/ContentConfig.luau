@@ -157,6 +157,18 @@ local placeholderObjects: { PlaceholderObject } = {
 		attributes = { SceneId = "Maze", MarkerId = "KidnapStart", SequenceIndex = 1 },
 	},
 	{
+		sceneId = "Maze",
+		name = "KidnapHoldMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Maze", MarkerId = "KidnapHold", SequenceIndex = 2 },
+	},
+	{
+		sceneId = "Maze",
+		name = "KidnapDepartMarker",
+		tag = "CinematicMarker",
+		attributes = { SceneId = "Maze", MarkerId = "KidnapDepart", SequenceIndex = 3 },
+	},
+	{
 		sceneId = "Tower",
 		name = "TowerSpawn",
 		tag = "SceneSpawn",
@@ -168,8 +180,8 @@ local placeholderObjects: { PlaceholderObject } = {
 		tag = "NPCSpawn",
 		attributes = {
 			SceneId = "Tower",
-			MarkerId = "RobberSpawn",
-			NPCType = "RobberPatterinson",
+			MarkerId = "RobertSpawn",
+			NPCType = "RobertPattinson",
 		},
 	},
 	{
@@ -361,7 +373,7 @@ local ContentConfig = {
 				bella = 123711093849835, -- provided as "Nikki Manaj" stand-in → Bella
 				ramboFriendly = 285396402, -- Puppy → friendly Rambo
 				ramboEvil = 5292722268, -- Cartoon Dog Killer → scary Rambo
-				robberPatterinson = 11851270, -- provided Edward Cullen stand-in → Robber
+				robertPattinson = 11851270, -- Edward Cullen stand-in → Robert Pattinson
 				gigi = 9747993459, -- Pet The Dog → Gigi
 			},
 			props = {
@@ -375,7 +387,7 @@ local ContentConfig = {
 				bella = "https://create.roblox.com/store/asset/123711093849835/Nikki-Manaj",
 				ramboFriendly = "https://create.roblox.com/store/asset/285396402/Puppy",
 				ramboEvil = "https://create.roblox.com/store/asset/5292722268/Cartoon-Dog-Killer",
-				robberPatterinson = "https://create.roblox.com/store/asset/11851270/Edward-Cullen",
+				robertPattinson = "https://create.roblox.com/store/asset/11851270/Edward-Cullen",
 				gigi = "https://create.roblox.com/store/asset/9747993459/Pet-The-Dog",
 				letterFragments = "https://create.roblox.com/store/asset/118658326038279/95-Theses",
 			},
@@ -385,7 +397,7 @@ local ContentConfig = {
 			rambo = "rbxassetid://285396402",
 			ramboEvil = "rbxassetid://5292722268",
 			gigi = "rbxassetid://9747993459",
-			robberPatterinson = "rbxassetid://11851270",
+			robertPattinson = "rbxassetid://11851270",
 			lobby = "rbxassetid://9271965383",
 			maze = "rbxassetid://114374837037591",
 			tower = "rbxassetid://14446703870",
@@ -409,15 +421,29 @@ local ContentConfig = {
 			marketplaceKey = "lobby",
 			position = { x = 0, y = 0, z = 0 },
 			maxMarketplaceExtent = 160,
+			marketplaceCollision = true,
 		},
-		-- Maze and Tower use deterministic authored geometry because arbitrary
-		-- marketplace routes cannot be guaranteed to match gameplay markers.
-		Maze = { marketplaceKey = nil, position = { x = 1200, y = 0, z = 0 } },
-		Tower = { marketplaceKey = nil, position = { x = 2400, y = 0, z = 0 } },
+		-- Catalog maps are mounted as a sanitized visual layer. Deterministic
+		-- authored geometry remains authoritative for routes, checkpoints, and
+		-- touch sensors so a free-model update cannot break story progression.
+		Maze = {
+			marketplaceKey = nil,
+			position = { x = 1200, y = 0, z = 0 },
+		},
+		Tower = {
+			marketplaceKey = "tower",
+			position = { x = 2400, y = 0, z = 0 },
+			-- The authored ASMR route occupies the tower's inner 24x24-stud ring
+			-- and reaches y=22/top trigger y=23.
+			maxMarketplaceExtent = 44,
+			maxMarketplaceHeight = 24,
+			marketplaceCollision = false,
+		},
 		Field = {
 			marketplaceKey = "field",
 			position = { x = 3600, y = 0, z = 0 },
 			maxMarketplaceExtent = 170,
+			marketplaceCollision = true,
 		},
 		Epilogue = { marketplaceKey = nil, position = { x = 4800, y = 0, z = 0 } },
 	},
@@ -502,22 +528,28 @@ local ContentConfig = {
 		bellaChase = {
 			line("bella_near", "System", "Footsteps behind you. Don’t stop.", 2.5),
 		},
+		kidnap = {
+			line("kidnap_rambo", "Rambo", "We made it—stay right there!", 4.5),
+			line("kidnap_bella", "Bella", "Did you really think you could keep him?", 5),
+			line("kidnap_take", "Bella", "Come on, boy. She’s not saving anyone tonight.", 4.5),
+			line("kidnap_gone", "System", "Bella dragged Rambo back into the dark.", 5),
+		},
 		robberGuide = {
 			line(
 				"robber_1",
-				"Robber Patterinson",
+				"Robert Pattinson",
 				"Easy now. Eyes up the tower — every step has a story.",
 				4
 			),
 			line(
 				"robber_2",
-				"Robber Patterinson",
+				"Robert Pattinson",
 				"I’m no celebrity. Just a guy who knows which stairs squeak.",
 				4
 			),
 			line(
 				"robber_3",
-				"Robber Patterinson",
+				"Robert Pattinson",
 				"Twenty-eight creaks. Count them if it keeps you brave.",
 				3.5
 			),
@@ -550,7 +582,7 @@ local ContentConfig = {
 			),
 			line(
 				"epi_robber",
-				"Robber Patterinson",
+				"Robert Pattinson",
 				"No leftovers talk. Just the tag. Just the truth.",
 				4
 			),
@@ -585,8 +617,10 @@ local ContentConfig = {
 
 	cinematics = {
 		kidnap = {
-			cinematicStep("KidnapStart", 4, 0.4, 0.2, "maze_rambo_1"),
-			cinematicStep("KidnapHold", 3, 0.1, 0.4, nil),
+			cinematicStep("KidnapStart", 5, 0.55, 0.12, "kidnap_rambo"),
+			cinematicStep("KidnapApproach", 5.5, 0.08, 0.08, "kidnap_bella"),
+			cinematicStep("KidnapHold", 4.5, 0.05, 0.08, "kidnap_take"),
+			cinematicStep("KidnapDepart", 5.5, 0.05, 0.35, "kidnap_gone"),
 		},
 		guide = {
 			cinematicStep("GuideMeet", 5, 0.5, 0.3, "robber_1"),
@@ -690,7 +724,7 @@ local ContentConfig = {
 
 	controls = {
 		walkSpeed = 16,
-		sprintSpeed = 24,
+		sprintSpeed = 32,
 		asmrDebounceSeconds = 0.45,
 		unlimitedSprint = true,
 	},

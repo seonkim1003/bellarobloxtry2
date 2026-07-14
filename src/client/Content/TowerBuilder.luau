@@ -1,8 +1,8 @@
 --!strict
 --[[
 	Builds / refreshes ASMR tower step triggers: 28 steps across 7 right-angle flights.
-	When a reviewed MarketplaceMap tower is present, only lightweight invisible
-	ASMRStep sensors are placed (no duplicate visible geometry).
+	The marketplace tower is a visual shell, while deterministic authored steps
+	remain visible and collidable so the 28-step route is always playable.
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -11,9 +11,20 @@ local Workspace = game:GetService("Workspace")
 local SharedAccess = require(script.Parent.Parent:WaitForChild("Net"):WaitForChild("SharedAccess"))
 local ContentConfig = SharedAccess.requireContentConfig()
 local Tagging = require(script.Parent:WaitForChild("Tagging"))
-local MarketplaceIntegration = require(script.Parent:WaitForChild("MarketplaceIntegration"))
 
 local TowerBuilder = {}
+
+local function preserveAuthoritativeSteps(tower: Model): boolean
+	local found = 0
+	for _, child in tower:GetChildren() do
+		if child:IsA("BasePart") and child.Name:match("^ASMRStep_") then
+			found += 1
+			child.CanCollide = true
+			child.CanTouch = true
+		end
+	end
+	return found >= ContentConfig.towerStepCount
+end
 
 local function ensureTowerModel(): Model
 	local scenes = Workspace:FindFirstChild("Scenes")
@@ -77,32 +88,22 @@ end
 
 function TowerBuilder.rebuildFlights()
 	local tower = ensureTowerModel()
+	-- Rojo-authored steps replicate from the server and are bound to authoritative
+	-- progression. Never replace them with client-only collision geometry.
+	if preserveAuthoritativeSteps(tower) then
+		return
+	end
 	clearGeneratedSteps(tower)
 
-	local marketplaceTower = MarketplaceIntegration.hasSceneMap("Tower")
 	local stepCount = ContentConfig.towerStepCount
 	local flights = ContentConfig.towerFlights
 	local stepsPerFlight = math.ceil(stepCount / flights)
 
 	local towerLayout = ContentConfig.sceneLayouts.Tower.position
 	local origin = Vector3.new(towerLayout.x - 10, towerLayout.y, towerLayout.z - 10)
-	-- Prefer marketplace map pivot when available so sensors land near real stairs.
-	local map = tower:FindFirstChild("MarketplaceMap")
-	if map and map:IsA("Model") then
-		local pivot = map:GetPivot().Position
-		origin = Vector3.new(pivot.X, pivot.Y, pivot.Z)
-	end
-
 	local facing = 0
 	local cursor = origin
 	local parent: Instance = tower
-
-	if marketplaceTower then
-		local folder = Instance.new("Folder")
-		folder.Name = "ContentASMRSensors"
-		folder.Parent = tower
-		parent = folder
-	end
 
 	for flight = 0, flights - 1 do
 		for stepInFlight = 1, stepsPerFlight do
@@ -114,7 +115,7 @@ function TowerBuilder.rebuildFlights()
 			local along = (stepInFlight - 0.5) * 3
 			local position = cursor
 				+ Vector3.new(math.cos(facing) * along, 1 + index * 0.75, math.sin(facing) * along)
-			placeStepPart(parent, index, position, facing, not marketplaceTower)
+			placeStepPart(parent, index, position, facing, true)
 		end
 
 		cursor = cursor
@@ -126,25 +127,19 @@ function TowerBuilder.rebuildFlights()
 		facing += math.rad(90)
 	end
 
-	if not marketplaceTower then
-		local rail = Instance.new("Part")
-		rail.Name = "TowerRail"
-		rail.Anchored = true
-		rail.CanCollide = true
-		rail.Size = Vector3.new(1, 12, 1)
-		rail.Color = Color3.fromRGB(90, 90, 100)
-		rail.Material = Enum.Material.Metal
-		rail.CFrame = CFrame.new(origin + Vector3.new(-2, 8, -2))
-		rail.Parent = tower
-	end
+	local rail = Instance.new("Part")
+	rail.Name = "TowerRail"
+	rail.Anchored = true
+	rail.CanCollide = true
+	rail.Size = Vector3.new(1, 12, 1)
+	rail.Color = Color3.fromRGB(90, 90, 100)
+	rail.Material = Enum.Material.Metal
+	rail.CFrame = CFrame.new(origin + Vector3.new(-2, 8, -2))
+	rail.Parent = tower
 
 	for _, tagged in CollectionService:GetTagged("ASMRStep") do
 		if tagged:IsDescendantOf(tower) and tagged:IsA("BasePart") then
-			if marketplaceTower then
-				tagged.CanCollide = false
-			else
-				tagged.CanCollide = true
-			end
+			tagged.CanCollide = true
 		end
 	end
 end

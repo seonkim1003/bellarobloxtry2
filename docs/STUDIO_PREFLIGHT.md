@@ -17,7 +17,7 @@ Use this once before publishing or sharing a test place.
 
 1. Place must allow `InsertService:LoadAsset` for creator-owned assets.
 2. Confirm `ReplicatedStorage.ContentModels` gets `Ready = true` after server start.
-3. Confirm Lobby and Field mount `MarketplaceMap`; Maze and Tower intentionally retain deterministic authored gameplay geometry.
+3. Confirm Lobby, Tower, and Field mount `MarketplaceMap`. The Backrooms marketplace maze is disabled; the deterministic authored maze owns its visuals, collision, and progression.
 4. Soft-hidden stand-ins: Output should log how many stand-in parts were hidden after mount.
 
 ## Creator media placeholders

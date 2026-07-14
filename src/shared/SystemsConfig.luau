@@ -35,7 +35,7 @@ return table.freeze({
 		CinematicMinimumSeconds = table.freeze({
 			-- MazeIntro is a synchronization cue, not a camera sequence.
 			MazeIntro = 0,
-			RamboTaken = 6,
+			RamboTaken = 18,
 			GuideEncounter = 4,
 			Corruption = 3,
 			LetterTheft = 6,

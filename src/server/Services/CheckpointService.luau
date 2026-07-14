@@ -1,6 +1,7 @@
 --!strict
 
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Contract = require(ReplicatedStorage:WaitForChild("GameShared"):WaitForChild("StoryContract"))
@@ -10,15 +11,21 @@ CheckpointService.__index = CheckpointService
 
 export type CheckpointService = typeof(setmetatable(
 	{} :: {
-		checkpoints: { [Player]: CFrame },
+		checkpoints: { [Player]: CFrame? },
 		spawns: { [string]: CFrame },
+		playerConnections: { [Player]: RBXScriptConnection },
 		started: boolean,
 	},
 	CheckpointService
 ))
 
 function CheckpointService.new(): CheckpointService
-	return setmetatable({ checkpoints = {}, spawns = {}, started = false }, CheckpointService)
+	return setmetatable({
+		checkpoints = {},
+		spawns = {},
+		playerConnections = {},
+		started = false,
+	}, CheckpointService)
 end
 
 local function markerCFrame(marker: Instance): CFrame?
@@ -36,6 +43,48 @@ function CheckpointService._cacheMarker(self: CheckpointService, marker: Instanc
 	if typeof(sceneId) == "string" and found then
 		self.spawns[sceneId] = found
 	end
+end
+
+function CheckpointService._restoreCharacter(
+	self: CheckpointService,
+	player: Player,
+	character: Model
+)
+	if self.checkpoints[player] == nil then
+		return
+	end
+	task.spawn(function()
+		local root = character:WaitForChild("HumanoidRootPart", 10)
+		if
+			root
+			and root:IsA("BasePart")
+			and player.Parent == Players
+			and player.Character == character
+		then
+			self:Respawn(player)
+		end
+	end)
+end
+
+function CheckpointService._observePlayer(self: CheckpointService, player: Player)
+	if self.playerConnections[player] then
+		return
+	end
+	self.playerConnections[player] = player.CharacterAdded:Connect(function(character)
+		self:_restoreCharacter(player, character)
+	end)
+	if player.Character then
+		self:_restoreCharacter(player, player.Character)
+	end
+end
+
+function CheckpointService._forgetPlayer(self: CheckpointService, player: Player)
+	local connection = self.playerConnections[player]
+	if connection then
+		connection:Disconnect()
+		self.playerConnections[player] = nil
+	end
+	self.checkpoints[player] = nil
 end
 
 function CheckpointService.Start(self: CheckpointService)
@@ -65,6 +114,15 @@ function CheckpointService.Start(self: CheckpointService)
 			end
 		end
 	end)
+	Players.PlayerAdded:Connect(function(player)
+		self:_observePlayer(player)
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		self:_forgetPlayer(player)
+	end)
+	for _, player in Players:GetPlayers() do
+		self:_observePlayer(player)
+	end
 end
 
 function CheckpointService.FindSceneSpawn(self: CheckpointService, sceneId: string): CFrame?
@@ -78,6 +136,7 @@ function CheckpointService.Set(self: CheckpointService, player: Player, sceneId:
 		return false
 	end
 	self.checkpoints[player] = found
+	player:SetAttribute("CheckpointSceneId", sceneId)
 	return true
 end
 
@@ -87,6 +146,7 @@ function CheckpointService.SetCurrent(self: CheckpointService, player: Player): 
 		return false
 	end
 	self.checkpoints[player] = character:GetPivot()
+	player:SetAttribute("CheckpointSceneId", "CurrentPosition")
 	return true
 end
 
@@ -106,10 +166,14 @@ end
 
 function CheckpointService.Clear(self: CheckpointService, player: Player)
 	self.checkpoints[player] = nil
+	player:SetAttribute("CheckpointSceneId", nil)
 end
 
 function CheckpointService.ClearAll(self: CheckpointService)
 	table.clear(self.checkpoints)
+	for _, player in Players:GetPlayers() do
+		player:SetAttribute("CheckpointSceneId", nil)
+	end
 end
 
 return CheckpointService

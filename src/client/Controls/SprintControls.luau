@@ -194,7 +194,7 @@ function SprintControls:enable()
 			self:_setSprinting(false)
 		end
 		return Enum.ContextActionResult.Sink
-	end, false, Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL3)
+	end, false, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonL3)
 
 	table.insert(
 		self._connections,

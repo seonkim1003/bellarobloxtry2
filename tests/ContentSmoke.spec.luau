@@ -22,6 +22,24 @@ for index, sceneId in sceneOrder do
 	end
 end
 
+for _, sceneId in { "Lobby", "Tower", "Field" } do
+	assert(
+		type(ContentConfig.sceneLayouts[sceneId].marketplaceKey) == "string",
+		`marketplace scene {sceneId} must be active`
+	)
+end
+
+assert(ContentConfig.sceneLayouts.Maze.marketplaceKey == nil, "Backrooms maze must stay disabled")
+assert(
+	ContentConfig.sceneLayouts.Tower.marketplaceCollision == false,
+	"catalog tower must not block the deterministic gameplay route"
+)
+assert(
+	ContentConfig.sceneLayouts.Tower.maxMarketplaceExtent == 44
+		and ContentConfig.sceneLayouts.Tower.maxMarketplaceHeight == 24,
+	"tower shell must fit the authored inner-wall ASMR route"
+)
+
 assert(
 	ContentConfig.worldLayout.MaxMarketplaceExtent < ContentConfig.worldLayout.SceneSpacing,
 	"marketplace maps must fit inside isolated scene cells"
@@ -63,6 +81,18 @@ for _, state in storyStates do
 	assert(seen[state] == nil, `duplicate story state {state}`)
 	seen[state] = true
 end
+
+local foundRobertSpawn = false
+for _, entry in ContentConfig.placeholderObjects do
+	if entry.attributes.NPCType == "RobertPattinson" then
+		foundRobertSpawn = entry.sceneId == "Tower" and entry.attributes.MarkerId == "RobertSpawn"
+	end
+end
+assert(foundRobertSpawn, "Robert Pattinson must have a canonical tower spawn")
+assert(
+	ContentConfig.assets.marketplace.characters.robertPattinson == 11851270,
+	"Robert Pattinson asset must be wired"
+)
 
 assert(ContentConfig.towerStepCount >= 24 and ContentConfig.towerStepCount <= 32, "ASMR steps")
 assert(ContentConfig.towerFlights >= 6 and ContentConfig.towerFlights <= 8, "ASMR flights")

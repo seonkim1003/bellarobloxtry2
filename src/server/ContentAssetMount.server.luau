@@ -7,6 +7,12 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local WorldMarkerService =
+	require(script.Parent:WaitForChild("Services"):WaitForChild("WorldMarkerService"))
+
+local registeredMarkers = WorldMarkerService.RegisterAuthoredMarkers()
+print(`[ContentAssets] Registered {registeredMarkers} authored world markers`)
+
 local templates = ReplicatedStorage:FindFirstChild("ContentModels")
 if not templates then
 	templates = Instance.new("Folder")
@@ -44,6 +50,11 @@ end)
 if not ok then
 	templates:SetAttribute("MountFailed", true)
 	warn(`[{label}] content mount failed: {mountError}`)
+elseif (templates:GetAttribute("AssetFailureCount") :: number?) ~= 0 then
+	templates:SetAttribute("MountFailed", true)
+	warn(
+		`[{label}] one or more marketplace assets failed; inspect ContentModels Asset_* attributes`
+	)
 end
 -- Always release Bootstrap. Runtime fallbacks remain available after a failed mount.
 templates:SetAttribute("Ready", true)

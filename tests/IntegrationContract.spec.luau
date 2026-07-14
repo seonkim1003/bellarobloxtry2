@@ -146,7 +146,7 @@ for _, marker in findTagged("SceneSpawn") do
 		sceneSpawns[sceneId] = true
 	end
 end
-for _, sceneId in { "MazeCheckpoint", "TowerBase", "FieldEntrance", "EpilogueSeat" } do
+for _, sceneId in { "Lobby", "MazeCheckpoint", "TowerBase", "FieldEntrance", "EpilogueSeat" } do
 	assert(sceneSpawns[sceneId], `Missing checkpoint SceneSpawn {sceneId}`)
 end
 
@@ -178,6 +178,18 @@ assert(
 		and string.find(gameplaySource, "caught = true", 1, true),
 	"Evil Rambo must emit detected and caught feedback"
 )
+assert(
+	string.find(gameplaySource, "function GameplayService._tryCompleteMazeExit", 1, true)
+		and string.find(gameplaySource, "instance.Touched:Connect", 1, true)
+		and string.find(gameplaySource, "function GameplayService._pollMazeExit", 1, true)
+		and string.find(gameplaySource, "RunService.Heartbeat:Connect", 1, true)
+		and string.find(gameplaySource, "self.validator.IsStoryState", 1, true),
+	"Maze exit must have server-validated touch and distance fallbacks"
+)
+assert(
+	string.find(gameplaySource, '"MazeIntroComplete"', 1, true),
+	"Non-cinematic MazeIntro must have a server-owned completion fallback"
+)
 local assetMountSource = fs.readFile("src/shared/ContentAssetMount.luau")
 assert(
 	string.find(assetMountSource, 'descendant:IsA("LuaSourceContainer")', 1, true),
@@ -186,6 +198,40 @@ assert(
 assert(
 	string.find(assetMountSource, 'CollectionService:AddTag(actor, "NPCSpawn")', 1, true),
 	"Runtime NPC actors must be tagged for server AI"
+)
+assert(
+	string.find(assetMountSource, 'spawnAtNpcTags(templates, "RobertPattinson"', 1, true)
+		and string.find(assetMountSource, 'templateName == "RobertPattinson"', 1, true),
+	"Robert Pattinson must mount with a visible fallback"
+)
+
+local towerBuilderSource = fs.readFile("src/client/Content/TowerBuilder.luau")
+assert(
+	string.find(towerBuilderSource, "preserveAuthoritativeSteps", 1, true),
+	"client tower builder must preserve server-authored ASMR progression steps"
+)
+
+local worldMarkerSource = fs.readFile("src/server/Services/WorldMarkerService.luau")
+assert(
+	string.find(worldMarkerSource, "ContentConfig.placeholderObjects", 1, true)
+		and string.find(worldMarkerSource, "ContentConfig.asmrStepPlaceholders", 1, true)
+		and string.find(worldMarkerSource, "CollectionService:AddTag", 1, true),
+	"Server must restore authored CollectionService tags from the canonical marker catalog"
+)
+local bootstrapSource = fs.readFile("src/server/Bootstrap.server.luau")
+local markerRegistration =
+	string.find(bootstrapSource, "WorldMarkerService.RegisterAuthoredMarkers()", 1, true)
+local checkpointStart = string.find(bootstrapSource, "checkpoints:Start()", 1, true)
+assert(
+	markerRegistration ~= nil and checkpointStart ~= nil and markerRegistration < checkpointStart,
+	"World markers must be registered before checkpoint discovery starts"
+)
+local checkpointSource = fs.readFile("src/server/Services/CheckpointService.luau")
+assert(
+	string.find(checkpointSource, "player.CharacterAdded:Connect", 1, true)
+		and string.find(checkpointSource, "self:Respawn(player)", 1, true)
+		and string.find(checkpointSource, 'SetAttribute("CheckpointSceneId"', 1, true),
+	"Checkpoints must restore characters after Roblox respawns them"
 )
 
 print("integration contract test passed")

@@ -29,6 +29,7 @@ local CinematicPlayer =
 local RobberPresentation =
 	require(clientRoot:WaitForChild("NPCs"):WaitForChild("RobberPresentation"))
 local SilhouetteStage = require(clientRoot:WaitForChild("NPCs"):WaitForChild("SilhouetteStage"))
+local KidnapStage = require(clientRoot:WaitForChild("NPCs"):WaitForChild("KidnapStage"))
 local EpilogueProps = require(clientRoot:WaitForChild("NPCs"):WaitForChild("EpilogueProps"))
 local FragmentFeedback =
 	require(clientRoot:WaitForChild("Feedback"):WaitForChild("FragmentFeedback"))
@@ -50,9 +51,11 @@ local gui = GuiShell.mount()
 local remotes = RemoteBoundary.new()
 local sprint =
 	SprintControls.new(ContentConfig.controls.walkSpeed, ContentConfig.controls.sprintSpeed)
+sprint:enable()
 local asmr = ASMRStepListener.new(ContentConfig.controls.asmrDebounceSeconds)
 local cinematics = CinematicPlayer.new()
 cinematics:bindSubtitles(gui.setSubtitle, gui.clearSubtitle)
+local kidnapStage = KidnapStage.new()
 
 local presenter = StoryPresenter.new({
 	gui = gui,
@@ -64,6 +67,7 @@ local presenter = StoryPresenter.new({
 	asmr = asmr,
 	robber = RobberPresentation,
 	silhouettes = SilhouetteStage,
+	kidnapStage = kidnapStage,
 	epilogueProps = EpilogueProps,
 	fragmentFeedback = FragmentFeedback,
 	detection = DetectionFeedback,

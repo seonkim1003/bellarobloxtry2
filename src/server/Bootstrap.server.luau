@@ -16,11 +16,16 @@ local StoryService = require(Services:WaitForChild("StoryService"))
 local CheckpointService = require(Services:WaitForChild("CheckpointService"))
 local GameplayService = require(Services:WaitForChild("GameplayService"))
 local AdminService = require(Services:WaitForChild("AdminService"))
+local WorldMarkerService = require(Services:WaitForChild("WorldMarkerService"))
 local NPC = script.Parent:WaitForChild("NPC")
 local FriendlyRamboService = require(NPC:WaitForChild("FriendlyRamboService"))
 local HostileNpcService = require(NPC:WaitForChild("HostileNpcService"))
 
 assert(Config.ContractVersion == Contract.Version, "SystemsConfig contract version mismatch")
+
+-- Register tags before checkpoints and gameplay query CollectionService. This is
+-- intentionally idempotent with ContentAssetMount's earlier registration.
+WorldMarkerService.RegisterAuthoredMarkers()
 
 local remotes = RemoteRegistry.Create()
 

@@ -17,6 +17,7 @@ function FriendlyRamboService.new(roleService: any)
 		active = false,
 		markers = {},
 		markerIndex = 1,
+		exit = nil,
 		elapsed = 0,
 		connection = nil,
 	}, FriendlyRamboService)
@@ -49,6 +50,13 @@ function FriendlyRamboService._discover(self: any)
 			< (b:GetAttribute(Contract.Attributes.SequenceIndex) or 0)
 	end)
 	self.markers = markers
+	self.exit = nil
+	for _, exit in CollectionService:GetTagged(Contract.Tags.MazeExit) do
+		if exit:IsA("BasePart") then
+			self.exit = exit
+			break
+		end
+	end
 end
 
 local function positionOf(instance: Instance): Vector3?
@@ -68,35 +76,28 @@ function FriendlyRamboService.Start(self: any)
 	CollectionService:GetInstanceAddedSignal(Contract.Tags.CinematicMarker):Connect(function()
 		self:_discover()
 	end)
+	CollectionService:GetInstanceAddedSignal(Contract.Tags.MazeExit):Connect(function()
+		self:_discover()
+	end)
 	self.connection = RunService.Heartbeat:Connect(function(dt)
 		if not self.active or not self.agent then
 			return
 		end
 		self.elapsed += dt
-		if self.elapsed < 0.75 then
+		if self.elapsed < 0.25 then
 			return
 		end
 		self.elapsed = 0
-		local player = self.roleService:GetProtagonist()
-		local root = player
-			and player.Character
-			and player.Character:FindFirstChild("HumanoidRootPart")
-		local marker = self.markers[self.markerIndex]
+		local marker = if self.markerIndex <= #self.markers
+			then self.markers[self.markerIndex]
+			else self.exit
 		local destination = marker and positionOf(marker)
-		if not root or not root:IsA("BasePart") or not destination then
-			return
-		end
-		local separation = (self.agent.root.Position - root.Position).Magnitude
-		if separation > 32 then
-			self.agent:Cancel()
+		if not destination then
 			return
 		end
 		self.agent:MoveTo(destination)
-		if
-			(self.agent.root.Position - destination).Magnitude < 6
-			and (root.Position - destination).Magnitude < 12
-		then
-			self.markerIndex = math.min(self.markerIndex + 1, #self.markers)
+		if (self.agent.root.Position - destination).Magnitude < 6 then
+			self.markerIndex = math.min(self.markerIndex + 1, #self.markers + 1)
 		end
 	end)
 end
@@ -105,6 +106,7 @@ function FriendlyRamboService.SetActive(self: any, active: boolean)
 	self.active = active
 	if active then
 		self:_discover()
+		self.elapsed = 0.25
 	end
 	if not active and self.agent then
 		self.agent:Cancel()

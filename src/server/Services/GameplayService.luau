@@ -3,6 +3,7 @@
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local GameShared = ReplicatedStorage:WaitForChild("GameShared")
 local Contract = require(GameShared:WaitForChild("StoryContract"))
@@ -11,6 +12,29 @@ local RuntimeRules = require(GameShared:WaitForChild("RuntimeRules"))
 
 local GameplayService = {}
 GameplayService.__index = GameplayService
+
+local function setFragmentVisualVisible(fragmentId: string, visible: boolean)
+	local contentProps = workspace:FindFirstChild("ContentProps")
+	local visual = contentProps and contentProps:FindFirstChild(`LetterFragment_{fragmentId}`)
+	if not visual then
+		return
+	end
+	for _, descendant in visual:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local original = descendant:GetAttribute("FragmentOriginalTransparency")
+			if visible then
+				descendant.Transparency = if typeof(original) == "number" then original else 0
+				descendant.CanQuery = true
+			else
+				if typeof(original) ~= "number" then
+					descendant:SetAttribute("FragmentOriginalTransparency", descendant.Transparency)
+				end
+				descendant.Transparency = 1
+				descendant.CanQuery = false
+			end
+		end
+	end
+end
 
 function GameplayService.new(
 	remotes: { [string]: RemoteEvent },
@@ -38,6 +62,9 @@ function GameplayService.new(
 		promptBound = {} :: { [Instance]: boolean },
 		fragmentPrompts = {} :: { [Instance]: ProximityPrompt },
 		mazePrompts = {} :: { [Instance]: ProximityPrompt },
+		mazeExitBound = {} :: { [Instance]: boolean },
+		mazeExits = {} :: { [BasePart]: boolean },
+		mazeExitPollElapsed = 0,
 		storyPrompts = {} :: { [Instance]: ProximityPrompt },
 		towerStepBound = {} :: { [Instance]: boolean },
 	}, GameplayService)
@@ -162,6 +189,9 @@ function GameplayService._bindPrompt(
 	if not prompt then
 		return nil
 	end
+	prompt.ActionText = actionText
+	prompt.RequiresLineOfSight = false
+	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Config.Validation.DefaultInteractionDistance
 	self.promptBound[instance] = true
 	prompt.Triggered:Connect(function(player)
@@ -170,25 +200,83 @@ function GameplayService._bindPrompt(
 	return prompt
 end
 
-function GameplayService._bindMazeExit(self: any, instance: Instance)
-	local prompt = self:_bindPrompt(instance, "Escape the maze", function(player)
-		if
-			self:_isProtagonist(player)
-			and self.validator.IsNear(
-				player,
-				instance,
-				Config.Validation.DefaultInteractionDistance
-			)
-			and self.validator.IsStoryState(self.storyService, Contract.States.BellaChase)
-			and self.validator:ConsumeOnce(`MazeExit:{self.storyService:GetRevision()}`)
+function GameplayService._tryCompleteMazeExit(self: any, instance: Instance, player: Player)
+	if not self:_isProtagonist(player) then
+		return
+	end
+	if
+		not self.validator.IsNear(player, instance, Config.Validation.DefaultInteractionDistance)
+	then
+		return
+	end
+
+	-- MazeIntro is not a cinematic. If its client acknowledgement was lost, the
+	-- server repairs the state before completing the exit instead of leaving the
+	-- player stranded at a valid finish.
+	if self.storyService:GetState() == Contract.States.MazeIntro then
+		self.storyService:Transition(Contract.States.BellaChase, "MazeExitRecoveredIntro")
+	end
+	if not self.validator.IsStoryState(self.storyService, Contract.States.BellaChase) then
+		return
+	end
+	if self.validator:ConsumeOnce(`MazeExit:{self.storyService:GetRevision()}`) then
+		self.storyService:Transition(Contract.States.RamboTaken, "MazeExitReached")
+	end
+end
+
+function GameplayService._pollMazeExit(self: any, dt: number)
+	self.mazeExitPollElapsed += dt
+	if self.mazeExitPollElapsed < 0.1 then
+		return
+	end
+	self.mazeExitPollElapsed = 0
+
+	local state = self.storyService:GetState()
+	if state ~= Contract.States.MazeIntro and state ~= Contract.States.BellaChase then
+		return
+	end
+	local player = self.roleService:GetProtagonist()
+	if not player then
+		return
+	end
+	for exitPart in self.mazeExits do
+		if exitPart.Parent == nil then
+			self.mazeExits[exitPart] = nil
+		elseif
+			self.validator.IsNear(player, exitPart, Config.Validation.DefaultInteractionDistance)
 		then
-			self.storyService:Transition(Contract.States.RamboTaken, "MazeExitReached")
+			self:_tryCompleteMazeExit(exitPart, player)
+			return
 		end
+	end
+end
+
+function GameplayService._bindMazeExit(self: any, instance: Instance)
+	if self.mazeExitBound[instance] or not instance:IsA("BasePart") then
+		return
+	end
+	self.mazeExitBound[instance] = true
+	self.mazeExits[instance] = true
+	instance.CanTouch = true
+
+	local prompt = self:_bindPrompt(instance, "Escape the maze", function(player)
+		self:_tryCompleteMazeExit(instance, player)
 	end)
 	if prompt then
 		self.mazePrompts[instance] = prompt
-		prompt.Enabled = self.storyService:GetState() == Contract.States.BellaChase
+		local state = self.storyService:GetState()
+		prompt.Enabled = state == Contract.States.MazeIntro or state == Contract.States.BellaChase
 	end
+
+	-- Touch is the reliable cross-input fallback. The same authoritative checks
+	-- used by the prompt prevent observers or out-of-state touches from advancing.
+	instance.Touched:Connect(function(hit)
+		local character = hit:FindFirstAncestorOfClass("Model")
+		local player = character and Players:GetPlayerFromCharacter(character)
+		if player and player.Character == character then
+			self:_tryCompleteMazeExit(instance, player)
+		end
+	end)
 end
 
 function GameplayService._bindStoryTrigger(self: any, instance: Instance)
@@ -241,6 +329,7 @@ function GameplayService._bindFragment(self: any, instance: Instance)
 		self.fragments[fragmentId] = true
 		self.fragmentCount += 1
 		instance:SetAttribute("Collected", true)
+		setFragmentVisualVisible(fragmentId, false)
 		local collectedPrompt = self.fragmentPrompts[instance]
 		if collectedPrompt then
 			collectedPrompt.Enabled = false
@@ -296,7 +385,7 @@ function GameplayService._onStateChanged(self: any, state: string)
 	self.bella:SetActive(state == Contract.States.BellaChase)
 	self.evilRambo:SetActive(state == Contract.States.FieldHunt)
 	for _, prompt in self.mazePrompts do
-		prompt.Enabled = state == Contract.States.BellaChase
+		prompt.Enabled = state == Contract.States.MazeIntro or state == Contract.States.BellaChase
 	end
 	for _, prompt in self.storyPrompts do
 		prompt.Enabled = state == Contract.States.TowerClimb
@@ -317,6 +406,10 @@ function GameplayService._onStateChanged(self: any, state: string)
 		self.checkpoints:ClearAll()
 		for _, fragment in CollectionService:GetTagged(Contract.Tags.LetterFragment) do
 			fragment:SetAttribute("Collected", false)
+			local fragmentId = fragment:GetAttribute(Contract.Attributes.FragmentId)
+			if typeof(fragmentId) == "string" then
+				setFragmentVisualVisible(fragmentId, true)
+			end
 			local prompt = self.fragmentPrompts[fragment]
 			if prompt then
 				prompt.Enabled = false
@@ -329,6 +422,15 @@ function GameplayService._onStateChanged(self: any, state: string)
 	end
 	if state == Contract.States.MazeIntro then
 		self:_movePlayerToScene(player, Config.Story.MazeCheckpointSceneId)
+		local revision = self.storyService:GetRevision()
+		task.delay(1, function()
+			if
+				self.storyService:GetState() == Contract.States.MazeIntro
+				and self.storyService:GetRevision() == revision
+			then
+				self.storyService:Transition(Contract.States.BellaChase, "MazeIntroComplete")
+			end
+		end)
 	elseif state == Contract.States.RoleLobby then
 		self:_movePlayerToScene(player, Config.Story.LobbyCheckpointSceneId)
 	elseif state == Contract.States.GuideEncounter then
@@ -371,6 +473,9 @@ function GameplayService.Start(self: any)
 		end)
 	CollectionService:GetInstanceAddedSignal(Contract.Tags.ASMRStep):Connect(function(instance)
 		self:_bindTowerStep(instance)
+	end)
+	RunService.Heartbeat:Connect(function(dt)
+		self:_pollMazeExit(dt)
 	end)
 
 	self.storyService:ObserveChanged(function(state)
